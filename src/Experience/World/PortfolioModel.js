@@ -107,12 +107,6 @@ export default class PortfolioModel {
           }
         });
 
-        console.log('GLB loaded correctly.');
-        console.log(
-          'Click targets found:',
-          this.clickTargets.map((target) => target.name)
-        );
-
         this.hideLoadingScreen();
       },
       undefined,

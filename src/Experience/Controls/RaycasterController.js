@@ -22,8 +22,10 @@ export default class RaycasterController {
       this.onClick(event);
     });
 
-    this.closePanelButton?.addEventListener('click', () => {
+    this.closePanelButton?.addEventListener('click', (event) => {
+      event.stopPropagation();
       this.sectionPanel?.classList.remove('visible');
+      this.experience.camera.moveToDefault();
     });
   }
 
@@ -54,13 +56,33 @@ export default class RaycasterController {
       return;
     }
 
-    const clickedObject = intersections[0].object;
+    const clickedObject = this.getClickTarget(intersections[0].object);
+
+    if (!clickedObject) {
+      return;
+    }
+
     const section = clickedObject.userData.section;
 
-    console.log('Clicked:', clickedObject.name, section.title);
+    console.log(`Clicked: ${clickedObject.name}`);
 
     this.openSectionPanel(section);
+    this.camera.setCalibrationTarget(clickedObject);
     this.camera.moveToPreset(clickedObject.name);
+  }
+
+  getClickTarget(object) {
+    let currentObject = object;
+
+    while (currentObject) {
+      if (currentObject.userData.isClickTarget) {
+        return currentObject;
+      }
+
+      currentObject = currentObject.parent;
+    }
+
+    return null;
   }
 
   updateMouseCoordinates(event) {
