@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DummyAnimator } from '../../animations/DummyAnimator.js';
 
 const CLICK_LAYER = 1;
 const FAN_CONFIGS = [
@@ -15,6 +16,7 @@ const FAN_CONFIGS = [
 ];
 const FAN_TARGET_SPEED = 18;
 const FAN_ACCELERATION = 6;
+const DEBUG_DUMMY_HIERARCHY = false;
 
 const SECTION_BY_OBJECT = {
   CLICK_DUMMY: {
@@ -50,12 +52,14 @@ const SECTION_BY_OBJECT = {
 export default class PortfolioModel {
   constructor(experience) {
     this.scene = experience.scene;
+    this.renderer = experience.renderer.instance;
     this.loadingScreen = document.querySelector('#loading-screen');
     this.clickTargets = [];
     this.fanRotors = [];
     this.fanEnabled = true;
     this.fanCurrentSpeed = 0;
     this.loadedModel = null;
+    this.dummyAnimator = null;
 
     this.setPlaceholder();
     this.loadModel();
@@ -114,6 +118,20 @@ export default class PortfolioModel {
         this.loadedModel = gltf.scene;
         this.scene.add(this.loadedModel);
         this.placeholderGroup.visible = false;
+
+        const dummyRoot = this.loadedModel.getObjectByName('Dummy_root');
+
+        if (DEBUG_DUMMY_HIERARCHY) {
+          dummyRoot?.traverse((child) => {
+            console.log(child.name, child.type);
+          });
+        }
+
+        this.dummyAnimator = new DummyAnimator({
+          dummyRoot,
+          renderer: this.renderer,
+          debug: true,
+        });
 
         this.loadedModel.traverse((object) => {
           if (object.name?.startsWith('CLICK_')) {
@@ -204,6 +222,8 @@ export default class PortfolioModel {
     }
 
     const deltaTime = Math.min(delta, 100) / 1000;
+    this.dummyAnimator?.update(delta);
+
     const targetSpeed = this.fanEnabled ? FAN_TARGET_SPEED : 0;
     const speedStep = FAN_ACCELERATION * deltaTime;
 

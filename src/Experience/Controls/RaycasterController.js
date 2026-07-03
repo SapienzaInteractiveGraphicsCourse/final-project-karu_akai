@@ -69,6 +69,11 @@ export default class RaycasterController {
     this.openSectionPanel(section);
     this.camera.setCalibrationTarget(clickedObject);
     this.camera.moveToPreset(clickedObject.name);
+
+    if (clickedObject.name === 'CLICK_DUMMY') {
+      console.log('[Raycaster] CLICK_DUMMY received, triggering wave');
+      this.world.portfolioModel.dummyAnimator?.triggerWave();
+    }
   }
 
   getClickTarget(object) {
