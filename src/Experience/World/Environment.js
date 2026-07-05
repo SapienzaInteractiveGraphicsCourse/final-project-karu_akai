@@ -4,26 +4,43 @@ export default class Environment {
   constructor(experience) {
     this.scene = experience.scene;
 
+    this.setBackground();
     this.setLights();
     this.setTable();
   }
 
+  setBackground() {
+    const background = new THREE.TextureLoader().load(
+      '/textures/background/library-background.png'
+    );
+    background.colorSpace = THREE.SRGBColorSpace;
+    this.scene.background = background;
+  }
+
   setLights() {
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
-    this.scene.add(ambientLight);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.08);
+    this.scene.add(this.ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
-    keyLight.position.set(4, 6, 4);
-    keyLight.castShadow = true;
-    this.scene.add(keyLight);
+    this.keyLight = new THREE.DirectionalLight(0xffffff, 0.22);
+    this.keyLight.position.set(4, 6, 4);
+    this.keyLight.castShadow = true;
+    this.scene.add(this.keyLight);
 
-    const coolLight = new THREE.PointLight(0x69d2ff, 2.8, 8);
-    coolLight.position.set(-2.8, 2.2, 2.6);
-    this.scene.add(coolLight);
+    this.coolLight = new THREE.PointLight(0x69d2ff, 0.12, 8);
+    this.coolLight.position.set(-2.8, 2.2, 2.6);
+    this.scene.add(this.coolLight);
 
-    const warmLight = new THREE.PointLight(0xffc68a, 1.8, 7);
-    warmLight.position.set(2.5, 1.6, -2.5);
-    this.scene.add(warmLight);
+    this.warmLight = new THREE.PointLight(0xffc68a, 0.08, 7);
+    this.warmLight.position.set(2.5, 1.6, -2.5);
+    this.scene.add(this.warmLight);
+  }
+
+  setPowerAmount(amount) {
+    const power = THREE.MathUtils.clamp(amount, 0, 1);
+    this.ambientLight.intensity = THREE.MathUtils.lerp(0.08, 0.34, power);
+    this.keyLight.intensity = THREE.MathUtils.lerp(0.22, 1.6, power);
+    this.coolLight.intensity = THREE.MathUtils.lerp(0.12, 1.1, power);
+    this.warmLight.intensity = THREE.MathUtils.lerp(0.08, 1.25, power);
   }
 
   setTable() {

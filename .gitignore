@@ -22,3 +22,20 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Blender source files
+*.blend
+*.blend1
+*.blend2
+
+# Archives
+*.7z
+*.gz
+*.zip
+*.rar
+*.tar
+*.tar.gz
+
+# Texture
+texture/
+public/textures/

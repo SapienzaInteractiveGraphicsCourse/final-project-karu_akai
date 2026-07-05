@@ -66,6 +66,12 @@ export default class RaycasterController {
 
     console.log(`Clicked: ${clickedObject.name}`);
 
+    const powerExperience = this.world.portfolioModel.powerExperience;
+    if (powerExperience?.handleClick(clickedObject)) {
+      console.log(`[Raycaster] Power ${powerExperience.poweredOn ? 'on' : 'off'}`);
+      return;
+    }
+
     this.openSectionPanel(section);
     this.camera.setCalibrationTarget(clickedObject);
     this.camera.moveToPreset(clickedObject.name);
