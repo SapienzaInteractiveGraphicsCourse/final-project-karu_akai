@@ -48,6 +48,31 @@ body {
   opacity: 0.85;
 }
 
+#reset-view {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 4;
+  padding: 9px 13px;
+  border: 1px solid rgba(145, 225, 255, 0.32);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(8, 12, 20, 0.58);
+  backdrop-filter: blur(12px);
+  font: inherit;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  opacity: 0.72;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+#reset-view:hover,
+#reset-view:focus-visible {
+  border-color: rgba(145, 225, 255, 0.72);
+  opacity: 1;
+}
+
 #section-panel {
   position: fixed;
   right: 32px;

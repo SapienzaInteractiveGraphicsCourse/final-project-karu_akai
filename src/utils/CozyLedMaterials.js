@@ -10,16 +10,16 @@ const PALETTE = {
 const COZY_BLOOM_LAYER = 2;
 
 const ROLE_CONFIG = {
-  fan: { color: 'champagne', intensity: 0.55, breathing: true },
-  motherboard: { color: 'softAmber', intensity: 1 },
+  fan: { color: 'champagne', intensity: 0.28, breathing: true },
+  motherboard: { color: 'softAmber', intensity: 0.34 },
   cpuCore: {
     color: 'warmIvory',
     baseColor: 'warmIvory',
-    intensity: 0.8,
+    intensity: 0.32,
   },
-  label: { color: 'sageGlow', baseColor: 'sageGlow', intensity: 0.45 },
-  logo: { color: 'warmIvory', intensity: 0.35 },
-  accent: { color: 'sageGlow', intensity: 0.85 },
+  label: { color: 'sageGlow', baseColor: 'sageGlow', intensity: 0.2 },
+  logo: { color: 'warmIvory', intensity: 0.18 },
+  accent: { color: 'sageGlow', intensity: 0.3 },
 };
 
 const ROLE_PATTERNS = {
@@ -147,7 +147,9 @@ export default class CozyLedMaterials {
       material.opacity = 1;
       material.depthWrite = true;
       material.depthTest = true;
-      material.toneMapped = false;
+      // Case accents remain inside the same exposure/tone-mapping hierarchy as
+      // the lamp instead of bypassing ACES and visually dominating the scene.
+      material.toneMapped = true;
       material.needsUpdate = true;
       ledMaterials.push(material);
       return material;

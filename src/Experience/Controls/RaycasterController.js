@@ -13,6 +13,7 @@ export default class RaycasterController {
 
     this.sectionPanel = document.querySelector('#section-panel');
     this.closePanelButton = document.querySelector('#close-panel');
+    this.resetViewButton = document.querySelector('#reset-view');
 
     window.addEventListener('pointermove', (event) => {
       this.onPointerMove(event);
@@ -26,6 +27,12 @@ export default class RaycasterController {
       event.stopPropagation();
       this.sectionPanel?.classList.remove('visible');
       this.experience.camera.moveToDefault();
+    });
+
+    this.resetViewButton?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this.sectionPanel?.classList.remove('visible');
+      this.camera.moveToView('case');
     });
   }
 
@@ -68,6 +75,12 @@ export default class RaycasterController {
 
     const powerExperience = this.world.portfolioModel.powerExperience;
     if (powerExperience?.handleClick(clickedObject)) {
+      if (clickedObject.name === 'CLICK_CHAIN') {
+        this.world.portfolioModel.animatorChain?.trigger();
+        if (powerExperience.poweredOn) {
+          this.camera.moveToView('case');
+        }
+      }
       console.log(`[Raycaster] Power ${powerExperience.poweredOn ? 'on' : 'off'}`);
       return;
     }

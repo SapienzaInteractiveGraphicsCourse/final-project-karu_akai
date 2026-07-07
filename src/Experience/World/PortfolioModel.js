@@ -2,10 +2,15 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DummyAnimator } from '../../animations/DummyAnimator.js';
 import { AnimatorChain } from '../../animations/AnimatorChain.js';
+import { FanAnimator } from '../../animations/FanAnimator.js';
+import { TubeFlowAnimator } from '../../animations/TubeFlowAnimator.js';
 import ApplyingTexture from '../../utils/ApplyingTexture.js';
 import CozyLedMaterials from '../../utils/CozyLedMaterials.js';
 import { secureModelMaterials } from '../../utils/ModelMaterialSafety.js';
 import PowerExperience from '../PowerExperience.js';
+import { DESKTOP_VISUAL_CONFIG } from '../VisualConfig.js';
+import ExtraLight from './ExtraLight.js';
+import MaterialEnhancements from './MaterialEnhancements.js';
 
 const CLICK_LAYER = 1;
 const FAN_CONFIGS = [
@@ -21,10 +26,9 @@ const FAN_CONFIGS = [
   { name: 'FAN_ROT_X', axis: 'x' },
  ];
 
-const FAN_TARGET_SPEED = 18;
-const FAN_ACCELERATION = 6;
 const DEBUG_DUMMY_HIERARCHY = false;
 const DEBUG_TRANSPARENT_MATERIALS = false;
+const DEBUG_MODEL_DIAGNOSTICS = false;
 const CPU_RING_RADIUS = 0.31;
 const CPU_RING_TUBE_RADIUS = 0.017;
 const CPU_CORE_OFFSET_X = 0;
@@ -71,13 +75,23 @@ export default class PortfolioModel {
     this.loadingScreen = document.querySelector('#loading-screen');
     this.clickTargets = [];
     this.fanRotors = [];
-    this.fanEnabled = true;
-    this.fanCurrentSpeed = 0;
     this.loadedModel = null;
     this.dummyAnimator = null;
     this.animatorChain = null;
+    this.fanAnimator = null;
     this.powerExperience = null;
+    this.tubeFlowAnimator = null;
+    this.extraLight = null;
+    this.cpuCentralLightRing = null;
+    this.cpuCentralLightRingMeshes = [];
+    this.casePoweredVisuals = [];
+    this.introElapsed = 0;
+    this.introTriggered = false;
+    const introParameter = new URLSearchParams(window.location.search).get('intro');
+    this.introEnabled =
+      DESKTOP_VISUAL_CONFIG.intro.enabled && introParameter !== 'off';
     this.applyingTexture = new ApplyingTexture();
+    this.materialEnhancements = new MaterialEnhancements();
     this.cozyLedMaterials = new CozyLedMaterials({ enabled: true });
 
     this.setPlaceholder();
@@ -130,23 +144,24 @@ export default class PortfolioModel {
 
   loadModel() {
     const loader = new GLTFLoader();
+    const modelUrl = `${import.meta.env.BASE_URL}models/portfolio_case.glb`;
 
     loader.load(
-      '/models/portfolio_case.glb',
+      modelUrl,
       (gltf) => {
         this.loadedModel = gltf.scene;
         this.applyingTexture.applyToModel(this.loadedModel);
+        this.normalizeCpuCentralDiscName();
+        this.applyCpuCentralDiscMaterial();
         const cpuCore = this.createCpuCoreVisual();
         // Isolate shared GLTF material instances before changing render flags.
         secureModelMaterials(this.loadedModel, {
           cloneMaterials: true,
           debug: DEBUG_TRANSPARENT_MATERIALS,
         });
-        if (cpuCore?.ring) {
-          this.cozyLedMaterials.assign(cpuCore.ring, 'cpuCore');
-        }
         this.cozyLedMaterials.applyToModel(this.loadedModel);
-        this.logMaterialDiagnostics();
+        this.applyCpuCentralDiscMaterial();
+        if (DEBUG_MODEL_DIAGNOSTICS) this.logMaterialDiagnostics();
 
         this.scene.add(this.loadedModel);
         this.placeholderGroup.visible = false;
@@ -162,15 +177,28 @@ export default class PortfolioModel {
         this.dummyAnimator = new DummyAnimator({
           dummyRoot,
           renderer: this.renderer,
-          debug: true,
+          debug: false,
         });
 
         const chainRoot = this.findObjectByNormalizedName('chain.001');
         this.animatorChain = new AnimatorChain({
           chainRoot,
           clickTarget: this.loadedModel.getObjectByName('CLICK_CHAIN'),
-          debug: true,
+          debug: false,
         });
+
+        const cpuCentralRingObject = this.loadedModel.getObjectByName('CPU_CENTRAL_RING');
+        const cpuCentralRingMeshes = [];
+
+        if (cpuCentralRingObject) {
+          if (cpuCentralRingObject.isMesh) {
+            cpuCentralRingMeshes.push(cpuCentralRingObject);
+          } else {
+            cpuCentralRingObject.traverse((object) => {
+              if (object.isMesh) cpuCentralRingMeshes.push(object);
+            });
+          }
+        }
 
         this.loadedModel.traverse((object) => {
           if (object.name?.startsWith('CLICK_')) {
@@ -179,6 +207,28 @@ export default class PortfolioModel {
             this.setupVisibleMesh(object);
           }
         });
+
+        this.materialEnhancements.apply(this.loadedModel);
+
+        if (DEBUG_MODEL_DIAGNOSTICS) this.logModelDiagnostics();
+
+        if (!cpuCentralRingObject || cpuCentralRingMeshes.length === 0) {
+          console.warn('[PORTFOLIO MODEL] CPU_CENTRAL_RING was not found or contains no mesh children. CPU central ring will not be enabled.');
+        } else {
+          const ringMaterial = this.createCpuCentralRingMaterial();
+          cpuCentralRingMeshes.forEach((mesh) => {
+            mesh.material = Array.isArray(mesh.material)
+              ? mesh.material.map(() => ringMaterial.clone())
+              : ringMaterial.clone();
+            mesh.renderOrder = 999;
+            mesh.castShadow = false;
+            mesh.receiveShadow = false;
+            mesh.material.needsUpdate = true;
+          });
+          this.cpuCentralLightRing = cpuCentralRingObject;
+          this.cpuCentralLightRingMeshes = cpuCentralRingMeshes;
+          this.casePoweredVisuals.push(cpuCentralRingObject);
+        }
 
         FAN_CONFIGS.forEach((config) => {
           const configuredObject = this.loadedModel.getObjectByName(config.name);
@@ -204,14 +254,41 @@ export default class PortfolioModel {
           }
         });
 
+        this.fanAnimator = new FanAnimator({
+          fanRotors: this.fanRotors,
+          enabled: false,
+        });
+
         this.powerExperience = new PowerExperience({
           scene: this.scene,
           model: this.loadedModel,
           environment: this.experience.world.environment,
-          clickTargets: this.clickTargets,
+          renderer: this.experience.renderer,
           ledController: this.cozyLedMaterials,
+          cpuCore,
+          cpuCentralLightRing: this.cpuCentralLightRing,
+          cpuCentralLightRingMeshes: this.cpuCentralLightRingMeshes,
+          fanAnimator: this.fanAnimator,
         });
 
+        this.extraLight = new ExtraLight(this.scene, {
+          lamp: this.loadedModel.getObjectByName('LAMPADINA_4'),
+        });
+
+        this.tubeFlowAnimator = new TubeFlowAnimator({
+          parent: this.loadedModel,
+          scene: this.scene,
+          enabled: this.powerExperience.poweredOn,
+        });
+
+        const originalSetPoweredOn = this.powerExperience.setPoweredOn.bind(this.powerExperience);
+        this.powerExperience.setPoweredOn = (poweredOn) => {
+          originalSetPoweredOn(poweredOn);
+          this.tubeFlowAnimator?.setPoweredOn(this.powerExperience.poweredOn);
+          this.extraLight?.setPoweredOn(this.powerExperience.poweredOn);
+        };
+
+        this.powerExperience.setPoweredOn(this.powerExperience.poweredOn);
         this.hideLoadingScreen();
       },
       undefined,
@@ -226,12 +303,22 @@ export default class PortfolioModel {
   }
 
   setupVisibleMesh(object) {
-    object.castShadow = true;
-    object.receiveShadow = true;
+    if (this.isPlantLikeMesh(object)) {
+      object.castShadow = false;
+      object.receiveShadow = false;
+    } else {
+      object.castShadow = true;
+      object.receiveShadow = true;
+    }
 
     if (object.material) {
       object.material.needsUpdate = true;
     }
+  }
+
+  isPlantLikeMesh(object) {
+    const name = object?.name ?? '';
+    return /(plant|leaf|trunk|sketchfab|komish)/i.test(name);
   }
 
   findObjectByNormalizedName(name) {
@@ -314,11 +401,12 @@ export default class PortfolioModel {
     );
     const ringMaterial = new THREE.MeshStandardMaterial({
       name: 'CpuCoreWarmLedMaterial',
-      color: 0xfff1d0,
-      emissive: 0xfff1d0,
-      emissiveIntensity: 0.8,
+      color: 0x0b1f1a,
+      emissive: 0x06120f,
+      emissiveIntensity: 0.03,
       roughness: 0.35,
       metalness: 0,
+      toneMapped: true,
       transparent: false,
       opacity: 1,
       depthTest: true,
@@ -355,7 +443,13 @@ export default class PortfolioModel {
 
     group.add(disk, ring, label);
     cpu.add(group);
-    return { group, ring };
+    return {
+      group,
+      ring,
+      label,
+      labelContext: label.userData.labelContext,
+      labelTexture: label.userData.labelTexture,
+    };
   }
 
   createCpuCoreLabel() {
@@ -363,8 +457,9 @@ export default class PortfolioModel {
     canvas.width = 512;
     canvas.height = 256;
     const context = canvas.getContext('2d');
+
     context.clearRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = '#fff1d0';
+    context.fillStyle = '#06120f';
     context.font = '600 132px sans-serif';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
@@ -372,13 +467,19 @@ export default class PortfolioModel {
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
-    const material = new THREE.MeshBasicMaterial({
+    const material = new THREE.MeshStandardMaterial({
       name: 'CpuCoreSbcLabelMaterial',
+      color: 0x06120f,
+      emissive: 0x000000,
+      emissiveIntensity: 0,
       map: texture,
       transparent: true,
+      opacity: 0.08,
+      roughness: 0.65,
+      metalness: 0,
       depthTest: true,
       depthWrite: false,
-      toneMapped: false,
+      toneMapped: true,
       side: THREE.DoubleSide,
     });
     const geometry = new THREE.PlaneGeometry(
@@ -388,8 +489,65 @@ export default class PortfolioModel {
     const label = new THREE.Mesh(geometry, material);
     label.name = 'CPU_CORE_SBC_LABEL';
     label.userData.modelMaterialRole = 'cpu-core-label';
+    label.userData.labelContext = context;
+    label.userData.labelTexture = texture;
     label.renderOrder = 0;
     return label;
+  }
+
+  normalizeCpuCentralDiscName() {
+    if (!this.loadedModel) return;
+
+    const discTypo = this.loadedModel.getObjectByName('CPU_CENTRAL_DISCK');
+    const discCorrect = this.loadedModel.getObjectByName('CPU_CENTRAL_DISC');
+
+    if (discTypo && !discCorrect) {
+      discTypo.name = 'CPU_CENTRAL_DISC';
+      console.warn(
+        '[PORTFOLIO MODEL] Renamed GLB node CPU_CENTRAL_DISCK to CPU_CENTRAL_DISC to preserve the separate CPU disc mesh.'
+      );
+    }
+  }
+
+  applyCpuCentralDiscMaterial() {
+    if (!this.loadedModel) return;
+
+    const discMesh = this.loadedModel.getObjectByName('CPU_CENTRAL_DISC');
+    if (!discMesh || !discMesh.isMesh) return;
+
+    const discMaterial = new THREE.MeshStandardMaterial({
+      name: 'CpuCentralDiscMaterial',
+      color: 0x201a16,
+      roughness: 0.65,
+      metalness: 0.05,
+      transparent: false,
+      opacity: 1,
+      depthTest: true,
+      depthWrite: true,
+      side: THREE.DoubleSide,
+    });
+
+    discMesh.material = Array.isArray(discMesh.material)
+      ? discMesh.material.map(() => discMaterial.clone())
+      : discMaterial;
+    discMesh.castShadow = false;
+    discMesh.receiveShadow = false;
+    discMesh.material.needsUpdate = true;
+  }
+
+  createCpuCentralRingMaterial() {
+    return new THREE.MeshStandardMaterial({
+      name: 'CpuCentralRingMaterial',
+      color: 0xffe9c6,
+      emissive: 0xffd8a8,
+      emissiveIntensity: 0.32,
+      roughness: 0.25,
+      metalness: 0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      transparent: false,
+      opacity: 1,
+    });
   }
 
   logMaterialDiagnostics() {
@@ -422,6 +580,129 @@ export default class PortfolioModel {
     });
   }
 
+  logModelDiagnostics() {
+    if (!this.loadedModel) return;
+
+    const meshes = [];
+    const materialSet = new Set();
+    const largeTextures = [];
+    const materialNameCounts = new Map();
+
+    this.loadedModel.traverse((object) => {
+      if (!object.isMesh || !object.geometry) return;
+
+      const geometry = object.geometry;
+      const triangleCount = this.getApproximateTriangleCount(geometry);
+      const materials = Array.isArray(object.material)
+        ? object.material
+        : object.material
+          ? [object.material]
+          : [];
+
+      materials.forEach((material) => {
+        if (material) materialSet.add(material);
+        if (material?.isMaterial) {
+          const baseName = this.getMaterialBaseName(material.name || '');
+          materialNameCounts.set(baseName, (materialNameCounts.get(baseName) || 0) + 1);
+
+          const textureEntries = this.collectMaterialTextures(material);
+          textureEntries.forEach((textureInfo) => {
+            if (textureInfo.width >= 2048 || textureInfo.height >= 2048) {
+              largeTextures.push(textureInfo);
+            }
+          });
+        }
+      });
+
+      meshes.push({
+        name: object.name || '(unnamed)',
+        triangleCount,
+        materialCount: materials.length,
+        materialName: materials[0]?.name || '(none)',
+        parentName: object.parent?.name || '(root)',
+        visible: object.visible,
+        castShadow: object.castShadow,
+        receiveShadow: object.receiveShadow,
+      });
+    });
+
+    meshes.sort((a, b) => b.triangleCount - a.triangleCount);
+
+    const duplicateMaterialNames = [...materialNameCounts.entries()]
+      .filter(([, count]) => count > 1)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20);
+
+    console.groupCollapsed('[PORTFOLIO MODEL] GLB diagnostics');
+    console.log('Mesh count', meshes.length);
+    console.log('Approximate triangle count', meshes.reduce((sum, mesh) => sum + mesh.triangleCount, 0));
+    console.log('Material count', materialSet.size);
+    console.log('Top 30 heaviest meshes', meshes.slice(0, 30).map((mesh) => ({
+      name: mesh.name,
+      triangles: mesh.triangleCount,
+      material: mesh.materialName,
+      parent: mesh.parentName,
+      visible: mesh.visible,
+      castShadow: mesh.castShadow,
+      receiveShadow: mesh.receiveShadow,
+    })));
+    console.log('Duplicate material names (base name)', duplicateMaterialNames);
+    console.log('Large textures', largeTextures.slice(0, 20));
+    console.groupEnd();
+  }
+
+  getMaterialBaseName(name) {
+    if (!name) return '(unnamed)';
+    const match = name.match(/^(.*?)(?:\.\d+)?$/);
+    return match?.[1] || name;
+  }
+
+  getApproximateTriangleCount(geometry) {
+    if (!geometry) return 0;
+
+    if (geometry.index) {
+      return Math.max(0, geometry.index.count / 3);
+    }
+
+    const positionAttribute = geometry.getAttribute?.('position');
+    return positionAttribute ? Math.max(0, positionAttribute.count / 3) : 0;
+  }
+
+  collectMaterialTextures(material) {
+    if (!material?.isMaterial) return [];
+
+    const textures = [];
+    const textureKeys = [
+      'map',
+      'aoMap',
+      'bumpMap',
+      'normalMap',
+      'displacementMap',
+      'emissiveMap',
+      'envMap',
+      'metalnessMap',
+      'roughnessMap',
+      'alphaMap',
+    ];
+
+    textureKeys.forEach((textureKey) => {
+      const texture = material[textureKey];
+      if (!texture?.image) return;
+
+      const width = texture.image.width ?? 0;
+      const height = texture.image.height ?? 0;
+      textures.push({
+        key: textureKey,
+        name: texture.name || textureKey,
+        width,
+        height,
+        src: texture.image.currentSrc || texture.image.src || null,
+      });
+    });
+
+    return textures;
+  }
+
   setupClickTarget(object) {
     object.layers.set(CLICK_LAYER);
     object.userData.isClickTarget = true;
@@ -438,6 +719,10 @@ export default class PortfolioModel {
         depthWrite: false,
         colorWrite: false,
       });
+      // Raycaster does not require render visibility. Hiding proxy meshes keeps
+      // them out of shadow and ambient-occlusion depth passes while preserving
+      // interaction.
+      object.visible = false;
     }
 
     this.clickTargets.push(object);
@@ -448,7 +733,7 @@ export default class PortfolioModel {
   }
 
   toggleFans() {
-    this.fanEnabled = !this.fanEnabled;
+    return this.fanAnimator?.toggle();
   }
 
   setLedsEnabled(enabled) {
@@ -459,36 +744,39 @@ export default class PortfolioModel {
     return this.cozyLedMaterials.toggle();
   }
 
+  updateCinematicIntro(delta) {
+    if (
+      !this.introEnabled ||
+      this.introTriggered ||
+      !this.powerExperience ||
+      this.powerExperience.hasUserInteracted
+    ) {
+      return;
+    }
+
+    this.introElapsed += Math.min(delta ?? 0, 100) / 1000;
+    if (this.introElapsed < DESKTOP_VISUAL_CONFIG.intro.delay) return;
+
+    this.introTriggered = true;
+    this.powerExperience.setPoweredOn(true);
+  }
+
   update(delta) {
     if (this.placeholderDummy) {
       this.placeholderDummy.rotation.y += 0.01;
     }
 
-    const deltaTime = Math.min(delta, 100) / 1000;
     this.dummyAnimator?.update(delta);
     this.animatorChain?.update(delta);
+    this.updateCinematicIntro(delta);
     this.powerExperience?.update(delta);
+    this.tubeFlowAnimator?.setPowerAmount(
+      this.powerExperience?.powerAmount ?? 0
+    );
+    this.fanAnimator?.update(delta);
+    this.tubeFlowAnimator?.update(delta);
+    this.extraLight?.update(delta);
     this.cozyLedMaterials.update(delta);
-
-    const targetSpeed =
-      this.fanEnabled && this.powerExperience?.poweredOn ? FAN_TARGET_SPEED : 0;
-    const speedStep = FAN_ACCELERATION * deltaTime;
-
-    if (this.fanCurrentSpeed < targetSpeed) {
-      this.fanCurrentSpeed = Math.min(
-        this.fanCurrentSpeed + speedStep,
-        targetSpeed
-      );
-    } else if (this.fanCurrentSpeed > targetSpeed) {
-      this.fanCurrentSpeed = Math.max(
-        this.fanCurrentSpeed - speedStep,
-        targetSpeed
-      );
-    }
-
-    this.fanRotors.forEach((fan) => {
-      fan.object.rotation[fan.axis] += this.fanCurrentSpeed * deltaTime;
-    });
   }
 }
 

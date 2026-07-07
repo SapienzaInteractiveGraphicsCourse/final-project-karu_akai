@@ -5,6 +5,7 @@ import Camera from './Camera.js';
 import Renderer from './Renderer.js';
 import World from './World/World.js';
 import RaycasterController from './Controls/RaycasterController.js';
+import DebugUtils from '../utils/DebugUtils.js';
 
 let instance = null;
 
@@ -24,8 +25,20 @@ export default class Experience {
     this.time = new Time();
     this.camera = new Camera(this);
     this.renderer = new Renderer(this);
-    this.world = new World(this);
-    this.raycasterController = new RaycasterController(this);
+
+    if (!this.renderer.available) {
+      this.world = null;
+      this.raycasterController = null;
+      this.debugUtils = null;
+    } else {
+      this.world = new World(this);
+      this.raycasterController = new RaycasterController(this);
+      this.debugUtils = new DebugUtils({
+        canvas: this.canvas,
+        camera: this.camera.instance,
+        scene: this.scene,
+      });
+    }
 
     this.sizes.on('resize', () => {
       this.resize();
@@ -43,8 +56,8 @@ export default class Experience {
 
   update() {
     this.camera.update();
-    this.world.update(this.time.delta);
-    this.raycasterController.update();
-    this.renderer.update();
+    this.world?.update(this.time.delta);
+    this.raycasterController?.update();
+    this.renderer?.update();
   }
 }

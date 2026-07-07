@@ -3,10 +3,15 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import gsap from 'gsap';
 
 const CAMERA_PRESETS = {
+  LAMP: {
+    position: { x: 19.0, y: -2.0, z: 33.0 },
+    target: { x: 9.6, y: -5.0, z: 15.1 },
+    duration: 1.6,
+  },
   DEFAULT: {
     position: { x: -4.219, y: -0.709, z: 59.586 },
     target: { x: -10.179, y: -1.894, z: 4.908 },
-    duration: 1.2,
+    duration: 2.4,
   },
   CLICK_DUMMY: {
   position: { x: -17.767, y: -8.458, z: 31.208 },
@@ -45,6 +50,15 @@ const CAMERA_PRESETS = {
   },
 };
 
+// Semantic viewpoints keep navigation independent from GLB click-target names.
+const CAMERA_VIEWS = {
+  lamp: 'LAMP',
+  case: 'DEFAULT',
+  cpu: 'CLICK_CPU',
+  tubes: 'CLICK_CABLES',
+  dummy: 'CLICK_DUMMY',
+};
+
 export default class Camera {
   constructor(experience) {
     this.experience = experience;
@@ -59,9 +73,9 @@ export default class Camera {
       100
     );
     this.instance.position.set(
-      CAMERA_PRESETS.DEFAULT.position.x,
-      CAMERA_PRESETS.DEFAULT.position.y,
-      CAMERA_PRESETS.DEFAULT.position.z
+      CAMERA_PRESETS.LAMP.position.x,
+      CAMERA_PRESETS.LAMP.position.y,
+      CAMERA_PRESETS.LAMP.position.z
     );
     this.scene.add(this.instance);
 
@@ -70,16 +84,24 @@ export default class Camera {
     this.controls.enablePan = true;
     this.controls.enableZoom = true;
     this.controls.screenSpacePanning = true;
+    this.controls.dampingFactor = 0.07;
+    this.controls.rotateSpeed = 0.65;
+    this.controls.zoomSpeed = 0.7;
+    this.controls.panSpeed = 0.55;
+    this.controls.minDistance = 5;
+    this.controls.maxDistance = 68;
+    this.controls.minPolarAngle = Math.PI * 0.12;
+    this.controls.maxPolarAngle = Math.PI * 0.82;
     this.controls.target.set(
-      CAMERA_PRESETS.DEFAULT.target.x,
-      CAMERA_PRESETS.DEFAULT.target.y,
-      CAMERA_PRESETS.DEFAULT.target.z
+      CAMERA_PRESETS.LAMP.target.x,
+      CAMERA_PRESETS.LAMP.target.y,
+      CAMERA_PRESETS.LAMP.target.z
     );
     this.controls.update();
 
     this.activeTweens = [];
     this.transitionId = 0;
-    this.currentPresetName = 'DEFAULT';
+    this.currentPresetName = 'LAMP';
     this.calibrationTarget = null;
 
     window.addEventListener('keydown', (event) => {
@@ -121,7 +143,7 @@ export default class Camera {
     this.controls.enabled = false;
 
     const duration = preset.duration ?? 1.2;
-    const ease = 'power2.inOut';
+    const ease = 'sine.inOut';
     let completedTweens = 0;
 
     const handleUpdate = () => {
@@ -161,6 +183,10 @@ export default class Camera {
     });
 
     this.activeTweens = [positionTween, targetTween];
+  }
+
+  moveToView(viewName) {
+    this.moveToPreset(CAMERA_VIEWS[viewName] ?? viewName);
   }
 
   moveToDefault() {
@@ -273,4 +299,4 @@ export default class Camera {
   }
 }
 
-export { CAMERA_PRESETS };
+export { CAMERA_PRESETS, CAMERA_VIEWS };
