@@ -24,6 +24,15 @@ function stableMaterialIndex(name, count) {
   return hash % count;
 }
 
+const USE_RAW_TEXTURES =
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('rawTextures') === '1';
+const TEXTURE_ROOT = USE_RAW_TEXTURES ? '/textures/' : '/textures_optimized/';
+
+function texturePath(rawPath, optimizedPath = rawPath) {
+  return `${TEXTURE_ROOT}${USE_RAW_TEXTURES ? rawPath : optimizedPath}`;
+}
+
 export default class ApplyingTexture {
   constructor() {
     this.textureLoader = new THREE.TextureLoader();
@@ -45,79 +54,101 @@ export default class ApplyingTexture {
   }
 
   createMaterials() {
-    // Sostituisci questi placeholder con i nomi dei file in public/textures/.
-    const dummyMap = this.loadColorTexture('/textures/dummy/dummy-color.jpg');
+    const dummyMap = this.loadColorTexture(
+      texturePath('dummy/dummy-color.jpg', 'dummy/dummy-color.jpg')
+    );
     const dummyRoughnessMap = this.loadDataTexture(
-      '/textures/dummy/dummy-roughness.jpg'
+      texturePath('dummy/dummy-roughness.jpg', 'dummy/dummy-roughness.jpg')
     );
     const dummyNormalMap = this.loadDataTexture(
-      '/textures/dummy/dummy-normal.jpg'
+      texturePath('dummy/dummy-normal.jpg', 'dummy/dummy-normal.jpg')
     );
-    const tableMap = this.loadColorTexture('/textures/table/table-color.png');
+    const tableMap = this.loadColorTexture(
+      texturePath('table/table-color.png', 'table/table-color.jpg')
+    );
     const tableRoughnessMap = this.loadDataTexture(
-      '/textures/table/table-roughness.png'
+      texturePath('table/table-roughness.png', 'table/table-roughness.jpg')
     );
     const tableNormalMap = this.loadDataTexture(
-      '/textures/table/table-normal.png'
+      texturePath('table/table-normal.png', 'table/table-normal.jpg')
     );
-    const caseMap = this.loadColorTexture('/textures/case/case-color.png');
+    const caseMap = this.loadColorTexture(
+      texturePath('case/case-color.png', 'case/case-color.jpg')
+    );
     const caseRoughnessMap = this.loadDataTexture(
-      '/textures/case/case-roughness.png'
+      texturePath('case/case-roughness.png', 'case/case-roughness.jpg')
     );
     const caseNormalMap = this.loadDataTexture(
-      '/textures/case/case-normal.png'
+      texturePath('case/case-normal.png', 'case/case-normal.jpg')
     );
-    const fansMap = this.loadColorTexture('/textures/fans/fans-color.png');
+    const fansMap = this.loadColorTexture(
+      texturePath('fans/fans-color.png', 'fans/fans-color.jpg')
+    );
     const fansRoughnessMap = this.loadDataTexture(
-      '/textures/fans/fans-roughness.png'
+      texturePath('fans/fans-roughness.png', 'fans/fans-roughness.jpg')
     );
     const fansNormalMap = this.loadDataTexture(
-      '/textures/fans/fans-normal.png'
+      texturePath('fans/fans-normal.png', 'fans/fans-normal.jpg')
     );
     const fansMetalnessMap = this.loadDataTexture(
-      '/textures/fans/fans-metalness.png'
+      texturePath('fans/fans-metalness.png', 'fans/fans-metalness.jpg')
     );
     const plasticMap = this.loadColorTexture(
-      '/textures/plastic004/plastic-color.png'
+      texturePath('plastic004/plastic-color.png', 'plastic004/plastic-color.jpg')
     );
     const plasticRoughnessMap = this.loadDataTexture(
-      '/textures/plastic004/plastic-roughness.png'
+      texturePath(
+        'plastic004/plastic-roughness.png',
+        'plastic004/plastic-roughness.jpg'
+      )
     );
     const plasticNormalMap = this.loadDataTexture(
-      '/textures/plastic004/plastic-normal.png'
+      texturePath(
+        'plastic004/plastic-normal.png',
+        'plastic004/plastic-normal.jpg'
+      )
     );
     const fanRingMap = this.loadColorTexture(
-      '/textures/plastic013a/plastic-color.jpg'
+      texturePath('plastic013a/plastic-color.jpg', 'plastic013a/plastic-color.jpg')
     );
     const fanRingRoughnessMap = this.loadDataTexture(
-      '/textures/plastic013a/plastic-roughness.jpg'
+      texturePath(
+        'plastic013a/plastic-roughness.jpg',
+        'plastic013a/plastic-roughness.jpg'
+      )
     );
     const fanRingNormalMap = this.loadDataTexture(
-      '/textures/plastic013a/plastic-normal.jpg'
+      texturePath(
+        'plastic013a/plastic-normal.jpg',
+        'plastic013a/plastic-normal.jpg'
+      )
     );
     const fanOutlineMap = this.loadColorTexture(
-      '/textures/metal043a/metal-color.png'
+      texturePath('metal043a/metal-color.png', 'metal043a/metal-color.jpg')
     );
     const fanOutlineRoughnessMap = this.loadDataTexture(
-      '/textures/metal043a/metal-roughness.png'
+      texturePath('metal043a/metal-roughness.png', 'metal043a/metal-roughness.jpg')
     );
     const fanOutlineNormalMap = this.loadDataTexture(
-      '/textures/metal043a/metal-normal.png'
+      texturePath('metal043a/metal-normal.png', 'metal043a/metal-normal.jpg')
     );
     const fanOutlineMetalnessMap = this.loadDataTexture(
-      '/textures/metal043a/metal-metalness.png'
+      texturePath(
+        'metal043a/metal-metalness.png',
+        'metal043a/metal-metalness.jpg'
+      )
     );
     const outsideComponentsMap = this.loadColorTexture(
-      '/textures/metal045a/metal-color.jpg'
+      texturePath('metal045a/metal-color.jpg', 'metal045a/metal-color.jpg')
     );
     const outsideComponentsRoughnessMap = this.loadDataTexture(
-      '/textures/metal045a/metal-roughness.jpg'
+      texturePath('metal045a/metal-roughness.jpg', 'metal045a/metal-roughness.jpg')
     );
     const outsideComponentsNormalMap = this.loadDataTexture(
-      '/textures/metal045a/metal-normal.jpg'
+      texturePath('metal045a/metal-normal.jpg', 'metal045a/metal-normal.jpg')
     );
     const outsideComponentsMetalnessMap = this.loadDataTexture(
-      '/textures/metal045a/metal-metalness.jpg'
+      texturePath('metal045a/metal-metalness.jpg', 'metal045a/metal-metalness.jpg')
     );
 
     this.materials = {

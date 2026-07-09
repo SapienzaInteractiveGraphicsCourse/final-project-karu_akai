@@ -2,6 +2,13 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { DESKTOP_VISUAL_CONFIG } from '../VisualConfig.js';
 
+const USE_RAW_TEXTURES =
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('rawTextures') === '1';
+const BACKGROUND_TEXTURE_PATH = USE_RAW_TEXTURES
+  ? 'textures/background/library-background.png'
+  : 'textures_optimized/background/library-background.jpg';
+
 export default class Environment {
   constructor(experience) {
     this.scene = experience.scene;
@@ -15,7 +22,7 @@ export default class Environment {
 
   setBackground() {
     const background = new THREE.TextureLoader().load(
-      `${import.meta.env.BASE_URL}textures/background/library-background.png`
+      `${import.meta.env.BASE_URL}${BACKGROUND_TEXTURE_PATH}`
     );
     background.colorSpace = THREE.SRGBColorSpace;
     background.minFilter = THREE.LinearFilter;
