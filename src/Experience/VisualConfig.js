@@ -9,7 +9,7 @@ export const DESKTOP_VISUAL_CONFIG = Object.freeze({
     maxPixelRatio: 1.5,
   },
   intro: {
-    enabled: true,
+    enabled: false, //take it false for avoid the flicker on the first load, but it can be enabled for a cinematic intro
     delay: 0.65,
     transitionDuration: 1.9,
     stabilizationDuration: 0.5,
@@ -40,11 +40,12 @@ export const DESKTOP_VISUAL_CONFIG = Object.freeze({
       contrast: 1.055,
     },
   },
+  //regulation of the light intensity and color for the different light sources in the scene
   environment: {
-    environmentIntensityOff: 0.025,
+    environmentIntensityOff: 0.070,
     environmentIntensityOn: 0.27,
-    backgroundIntensityOff: 0.07,
-    backgroundIntensityOn: 0.34,
+    backgroundIntensityOff: 0.7,
+    backgroundIntensityOn: 1.0,
   },
   lamp: {
     color: 0xffc783,

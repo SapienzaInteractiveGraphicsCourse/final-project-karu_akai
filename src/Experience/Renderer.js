@@ -149,6 +149,7 @@ export default class Renderer {
       this.ambientOcclusionPass.kernelRadius = ao.kernelRadius;
       this.ambientOcclusionPass.minDistance = ao.minDistance;
       this.ambientOcclusionPass.maxDistance = ao.maxDistance;
+      this.excludeDecorativeMeshesFromSSAO(this.ambientOcclusionPass);
       const setAmbientOcclusionSize =
         this.ambientOcclusionPass.setSize.bind(this.ambientOcclusionPass);
       this.ambientOcclusionPass.setSize = (width, height) => {
@@ -177,6 +178,31 @@ export default class Renderer {
       RENDERER_CONFIG.exposureOn,
       power
     );
+  }
+
+  excludeDecorativeMeshesFromSSAO(pass) {
+    const overrideVisibility = pass._overrideVisibility.bind(pass);
+    const restoreVisibility = pass._restoreVisibility.bind(pass);
+    const visibilityCache = [];
+
+    pass._overrideVisibility = () => {
+      overrideVisibility();
+      visibilityCache.length = 0;
+
+      this.scene.traverse((object) => {
+        if (!object.userData?.excludeFromSSAO) return;
+        visibilityCache.push({ object, visible: object.visible });
+        object.visible = false;
+      });
+    };
+
+    pass._restoreVisibility = () => {
+      visibilityCache.forEach(({ object, visible }) => {
+        object.visible = visible;
+      });
+      visibilityCache.length = 0;
+      restoreVisibility();
+    };
   }
 
   showFallbackState() {

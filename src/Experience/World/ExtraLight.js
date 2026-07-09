@@ -10,6 +10,7 @@ const DEFAULTS = Object.freeze({
   fillOffset: new THREE.Vector3(-0.12, 0.02, 0.32),
   leftShadeOffset: new THREE.Vector3(-0.3, 0.02, 0.55),
   targetOffset: new THREE.Vector3(0, 0, 0),
+  coneVisibilityBoost: 2.35,
   tableSurfaceOffset: 0.04,
   poolPositionOffset: new THREE.Vector3(0, 0, 0),
   poolSurfaceOffset: 0.1,
@@ -46,9 +47,10 @@ export default class ExtraLight {
     }
     position.add(this.options.positionOffset);
     this.tableSurfaceY = this.getTableSurfaceY();
+    this.beamTargetPosition = this.getBeamTargetPosition(position);
     this.coneHeight = Math.max(
       0.6,
-      position.y - (this.tableSurfaceY + this.options.tableSurfaceOffset)
+      position.distanceTo(this.beamTargetPosition)
     );
     this.coneBottomRadius = Math.max(
       0.65,
@@ -60,48 +62,17 @@ export default class ExtraLight {
       Math.min(shadeSize?.x ?? 1.2, shadeSize?.z ?? 1.2) * 0.18
     );
 
-    this.coreGlowMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        uColor: { value: new THREE.Color(this.options.coneColor) },
-        uOpacity: { value: 0 },
-      },
+    this.coneTexture = this.createConeTexture();
+    this.coreGlowMaterial = new THREE.MeshBasicMaterial({
+      color: this.options.coneColor,
+      alphaMap: this.coneTexture,
       transparent: true,
+      opacity: 0,
       depthWrite: false,
       depthTest: true,
       blending: THREE.AdditiveBlending,
       toneMapped: false,
       side: THREE.DoubleSide,
-      vertexShader: `
-        varying vec2 vUv;
-        varying vec3 vNormalView;
-        varying vec3 vViewDirection;
-
-        void main() {
-          vUv = uv;
-          vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
-          vNormalView = normalize(normalMatrix * normal);
-          vViewDirection = normalize(-viewPosition.xyz);
-          gl_Position = projectionMatrix * viewPosition;
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 uColor;
-        uniform float uOpacity;
-        varying vec2 vUv;
-        varying vec3 vNormalView;
-        varying vec3 vViewDirection;
-
-        void main() {
-          float verticalFade = smoothstep(0.0, 0.18, vUv.y)
-            * (1.0 - smoothstep(0.72, 1.0, vUv.y));
-          float radialFade = pow(
-            1.0 - abs(dot(normalize(vNormalView), normalize(vViewDirection))),
-            1.35
-          );
-          float alpha = uOpacity * verticalFade * mix(0.32, 1.0, radialFade);
-          gl_FragColor = vec4(uColor, alpha);
-        }
-      `,
     });
     this.coreGlow = new THREE.Mesh(
       new THREE.CylinderGeometry(
@@ -115,9 +86,17 @@ export default class ExtraLight {
       this.coreGlowMaterial
     );
     this.coreGlow.name = 'ExtraLampCoreGlow';
+    // This is a purely additive volume, not scene geometry. Letting SSAO render
+    // it with its opaque normal override turns the warm beam into a dark cone.
+    this.coreGlow.userData.excludeFromSSAO = true;
     this.coreGlow.position
       .copy(position)
-      .setY(position.y - this.coneHeight * 0.5);
+      .add(this.beamTargetPosition)
+      .multiplyScalar(0.5);
+    this.coreGlow.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      position.clone().sub(this.beamTargetPosition).normalize()
+    );
     this.coreGlow.castShadow = false;
     this.coreGlow.receiveShadow = false;
 
@@ -157,10 +136,7 @@ export default class ExtraLight {
 
     this.spotTarget = new THREE.Object3D();
     this.spotTarget.name = 'ExtraLampTableTarget';
-    this.spotTarget.position
-      .copy(position)
-      .setY(this.tableSurfaceY + this.options.tableSurfaceOffset)
-      .add(this.options.targetOffset);
+    this.spotTarget.position.copy(this.beamTargetPosition);
 
     this.poolTexture = this.createPoolTexture();
     this.poolMaterial = new THREE.MeshBasicMaterial({
@@ -185,9 +161,10 @@ export default class ExtraLight {
       this.poolMaterial
     );
     this.lightPool.name = 'ExtraLampTableLightPool';
+    this.lightPool.userData.excludeFromSSAO = true;
     this.lightPool.rotation.x = -Math.PI * 1.5;
     this.lightPool.position
-      .copy(position)
+      .copy(this.beamTargetPosition)
       .setY(this.tableSurfaceY + this.options.poolSurfaceOffset)
       .add(this.options.poolPositionOffset);
     this.lightPool.castShadow = false;
@@ -313,6 +290,7 @@ export default class ExtraLight {
       this.shadeOverlayMaterial
     );
     this.shadeOverlay.name = 'ExtraLampShadeGlowOverlay';
+    this.shadeOverlay.userData.excludeFromSSAO = true;
     this.shadeOverlay.scale.setScalar(1.002);
     this.shadeOverlay.castShadow = false;
     this.shadeOverlay.receiveShadow = false;
@@ -341,6 +319,30 @@ export default class ExtraLight {
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  createConeTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 8;
+    canvas.height = 256;
+    const context = canvas.getContext('2d');
+    const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+
+    // Cylinder UVs run from the lower/table end at v=0 to the lamp at v=1.
+    gradient.addColorStop(0, '#000000');
+    gradient.addColorStop(0.2, '#707070');
+    gradient.addColorStop(0.58, '#d8d8d8');
+    gradient.addColorStop(0.88, '#ffffff');
+    gradient.addColorStop(1, '#000000');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.NoColorSpace;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
     texture.needsUpdate = true;
     return texture;
   }
@@ -377,6 +379,13 @@ export default class ExtraLight {
       ? TABLE_SURFACE_FALLBACK_Y
       : bounds.max.y;
     return surfaceY;
+  }
+
+  getBeamTargetPosition(sourcePosition) {
+    return sourcePosition
+      .clone()
+      .setY(this.tableSurfaceY + this.options.tableSurfaceOffset)
+      .add(this.options.targetOffset);
   }
 
   cloneShadeMaterials() {
@@ -439,8 +448,8 @@ export default class ExtraLight {
       this.options.leftShadeIntensity * visualAmount;
     this.spotLight.intensity = this.options.spotIntensity * visualAmount;
     this.areaLight.intensity = this.options.areaIntensity * visualAmount;
-    this.coreGlowMaterial.uniforms.uOpacity.value =
-      this.options.coneOpacity * visualAmount;
+    this.coreGlowMaterial.opacity =
+      this.options.coneOpacity * this.options.coneVisibilityBoost * visualAmount;
     this.poolMaterial.opacity = this.options.poolOpacity * visualAmount;
     if (this.shadeOverlayMaterial) {
       this.shadeOverlayMaterial.uniforms.uOpacity.value =
@@ -465,6 +474,7 @@ export default class ExtraLight {
     );
     this.coreGlow.geometry.dispose();
     this.coreGlowMaterial.dispose();
+    this.coneTexture.dispose();
     this.lightPool.geometry.dispose();
     this.poolMaterial.dispose();
     this.poolTexture.dispose();

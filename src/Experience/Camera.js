@@ -103,6 +103,10 @@ export default class Camera {
     this.transitionId = 0;
     this.currentPresetName = 'LAMP';
     this.calibrationTarget = null;
+    this.callbacks = {
+      transitionComplete: [],
+      mainSceneCameraSettled: [],
+    };
 
     window.addEventListener('keydown', (event) => {
       const key = event.key.toLowerCase();
@@ -126,6 +130,21 @@ export default class Camera {
 
   update() {
     this.controls.update();
+  }
+
+  on(eventName, callback) {
+    if (!this.callbacks[eventName]) return () => {};
+
+    this.callbacks[eventName].push(callback);
+    return () => {
+      this.callbacks[eventName] = this.callbacks[eventName].filter(
+        (registeredCallback) => registeredCallback !== callback
+      );
+    };
+  }
+
+  trigger(eventName, payload) {
+    this.callbacks[eventName]?.forEach((callback) => callback(payload));
   }
 
   moveToPreset(presetName) {
@@ -160,6 +179,10 @@ export default class Camera {
       this.controls.enabled = true;
       this.controls.update();
       this.activeTweens = [];
+      this.trigger('transitionComplete', { presetName: selectedPresetName });
+      if (selectedPresetName === 'DEFAULT') {
+        this.trigger('mainSceneCameraSettled', { presetName: selectedPresetName });
+      }
     };
 
     const positionTween = gsap.to(this.instance.position, {

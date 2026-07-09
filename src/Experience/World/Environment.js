@@ -75,12 +75,12 @@ export default class Environment {
     this.coolLight.intensity = THREE.MathUtils.lerp(0.01, 0.2, power);
     this.warmLight.intensity = THREE.MathUtils.lerp(0.008, 0.11, power);
     this.scene.environmentIntensity = THREE.MathUtils.lerp(
-      this.config.environmentIntensityOff,
+      Math.max(this.config.environmentIntensityOff, 0.18),
       this.config.environmentIntensityOn,
       power
     );
     this.scene.backgroundIntensity = THREE.MathUtils.lerp(
-      this.config.backgroundIntensityOff,
+      Math.max(this.config.backgroundIntensityOff, 0.38),
       this.config.backgroundIntensityOn,
       power
     );

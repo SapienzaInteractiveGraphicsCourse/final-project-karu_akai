@@ -11,6 +11,7 @@ import PowerExperience from '../PowerExperience.js';
 import { DESKTOP_VISUAL_CONFIG } from '../VisualConfig.js';
 import ExtraLight from './ExtraLight.js';
 import MaterialEnhancements from './MaterialEnhancements.js';
+import PlantMaterialTint from './PlantMaterialTint.js';
 
 const CLICK_LAYER = 1;
 const FAN_CONFIGS = [
@@ -92,6 +93,7 @@ export default class PortfolioModel {
       DESKTOP_VISUAL_CONFIG.intro.enabled && introParameter !== 'off';
     this.applyingTexture = new ApplyingTexture();
     this.materialEnhancements = new MaterialEnhancements();
+    this.plantMaterialTint = new PlantMaterialTint();
     this.cozyLedMaterials = new CozyLedMaterials({ enabled: true });
 
     this.setPlaceholder();
@@ -209,6 +211,7 @@ export default class PortfolioModel {
         });
 
         this.materialEnhancements.apply(this.loadedModel);
+        this.plantMaterialTint.apply(this.loadedModel);
 
         if (DEBUG_MODEL_DIAGNOSTICS) this.logModelDiagnostics();
 
@@ -775,6 +778,7 @@ export default class PortfolioModel {
     );
     this.fanAnimator?.update(delta);
     this.tubeFlowAnimator?.update(delta);
+    this.extraLight?.setPoweredOn(this.powerExperience?.poweredOn ?? false);
     this.extraLight?.update(delta);
     this.cozyLedMaterials.update(delta);
   }

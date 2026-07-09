@@ -188,7 +188,7 @@ export default class PowerExperience {
           material.emissive
             ?.set(0x06120f)
             .lerp(CPU_EMISSIVE_ON, power);
-          material.emissiveIntensity = 0.32 * power;
+          material.emissiveIntensity = 1.5 * power;
         });
       });
     }
