@@ -43,11 +43,6 @@ const CAMERA_PRESETS = {
   target: { x: -5.433, y: -8.068, z: 9.645 },
   duration: 1.2,
   },
-  CLICK_CASE: {
-  position: { x: 3.350, y: 1.900, z: 3.650 },
-  target: { x: 0.250, y: 0.920, z: 0.000 },
-  duration: 1.2,
-  },
 };
 
 // Semantic viewpoints keep navigation independent from GLB click-target names.

@@ -62,10 +62,6 @@ const SECTION_BY_OBJECT = {
     title: 'Hobby and interests',
     text: 'Creative interests, drawing, games, cinema, and personal passions.',
   },
-  CLICK_CASE: {
-    title: 'Contact me',
-    text: 'Contact information and external links.',
-  },
 };
 
 export default class PortfolioModel {

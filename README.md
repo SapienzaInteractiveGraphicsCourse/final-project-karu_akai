@@ -20,7 +20,6 @@ The project uses the inside of a computer case as a visual metaphor for a person
 | RAM | Academic |
 | Fans | Work experience |
 | Cables | Hobby and interests |
-| Case | Contact me |
 
 The initial experience is intentionally dark. The user is encouraged to click the lamp chain: the desk lamp turns on, the environment lighting increases, the case LEDs become visible, and the fans start spinning.
 
