@@ -37,43 +37,13 @@ const CPU_CORE_OFFSET_Y = 0.02;
 const CPU_CORE_OFFSET_Z = 0;
 const CPU_CORE_SCALE = 1;
 
-const SECTION_BY_OBJECT = {
-  CLICK_DUMMY: {
-    pages: [
-      {
-        title: 'Intro',
-        text: 'Dummy introduces the interactive portfolio and guides the visitor through the scene.',
-      },
-      {
-        title: 'About me',
-        text: 'Personal profile, background, and main interests.',
-      },
-      {
-        title: 'Contact me',
-        text: 'Contact information and external links.',
-      },
-    ],
-  },
-  CLICK_CPU: {
-    title: 'About me',
-    text: 'Personal profile, background, and main interests.',
-  },
-  CLICK_GPU: {
-    title: 'Projects',
-    text: 'Selected technical and creative projects.',
-  },
-  CLICK_RAM: {
-    title: 'Academic',
-    text: 'University path, relevant exams, and academic skills.',
-  },
-  CLICK_FANS: {
-    title: 'Work experience',
-    text: 'Professional experiences, tutoring, and applied activities.',
-  },
-  CLICK_CABLES: {
-    title: 'Hobby and interests',
-    text: 'Creative interests, drawing, games, cinema, and personal passions.',
-  },
+const SECTION_ID_BY_OBJECT = {
+  CLICK_DUMMY: 'dummy',
+  CLICK_CPU: 'about',
+  CLICK_GPU: 'projects',
+  CLICK_RAM: 'academic',
+  CLICK_FANS: 'experience',
+  CLICK_CABLES: 'interests',
 };
 
 export default class PortfolioModel {
@@ -718,10 +688,7 @@ export default class PortfolioModel {
     object.layers.set(CLICK_LAYER);
     object.userData.isClickTarget = true;
 
-    object.userData.section = SECTION_BY_OBJECT[object.name] ?? {
-      title: object.name,
-      text: 'Section content not assigned yet.',
-    };
+    object.userData.sectionId = SECTION_ID_BY_OBJECT[object.name] ?? null;
 
     if (object.isMesh) {
       object.material = new THREE.MeshBasicMaterial({

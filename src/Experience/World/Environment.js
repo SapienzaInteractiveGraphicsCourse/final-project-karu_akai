@@ -3,7 +3,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { DESKTOP_VISUAL_CONFIG } from '../VisualConfig.js';
 
 const BACKGROUND_TEXTURE_PATH =
-  'textures_optimized/background/library-background.jpg';
+  'textures_optimized/background/library_background.png';
 
 export default class Environment {
   constructor(experience) {
