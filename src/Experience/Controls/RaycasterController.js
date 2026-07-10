@@ -1,11 +1,16 @@
 import * as THREE from 'three';
+import { InteractionState } from '../InteractionState.js';
 import SectionPanel from '../UI/SectionPanel.js';
 import { CLICK_LAYER } from '../World/PortfolioModel.js';
+
+const CAMERA_MAIN_TRANSITION = 'camera:main';
+const CAMERA_SECTION_TRANSITION = 'camera:section';
 
 export default class RaycasterController {
   constructor(experience) {
     this.experience = experience;
     this.camera = experience.camera;
+    this.interactions = experience.interactions;
     this.world = experience.world;
     this.mouse = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
@@ -13,11 +18,17 @@ export default class RaycasterController {
     this.hoveredObject = null;
 
     this.sectionPanel = new SectionPanel({
+      canClose: () => this.interactions.canCloseSection(),
       onClose: () => {
+        this.beginMainCameraTransition();
         this.experience.camera.moveToDefault();
       },
     });
     this.resetViewButton = document.querySelector('#reset-view');
+
+    this.camera.on('transitionComplete', (payload) => {
+      this.onCameraTransitionComplete(payload);
+    });
 
     window.addEventListener('pointermove', (event) => {
       this.onPointerMove(event);
@@ -29,7 +40,10 @@ export default class RaycasterController {
 
     this.resetViewButton?.addEventListener('click', (event) => {
       event.stopPropagation();
-      this.sectionPanel.close();
+      if (!this.interactions.canOpenSection()) return;
+
+      this.sectionPanel.close({ force: true });
+      this.beginMainCameraTransition();
       this.camera.moveToView('case');
     });
   }
@@ -37,19 +51,29 @@ export default class RaycasterController {
   update() {}
 
   onPointerMove(event) {
+    if (this.sectionPanel.contains(event.target)) {
+      this.updateHoveredObject(null);
+      return;
+    }
+
     this.updateMouseCoordinates(event);
 
-    const intersections = this.getClickIntersections();
-    const firstObject = intersections[0]?.object ?? null;
+    const hoveredObject = this.getActionableClickTarget(
+      this.getClickIntersections()
+    );
 
-    if (firstObject !== this.hoveredObject) {
-      this.hoveredObject = firstObject;
+    this.updateHoveredObject(hoveredObject);
+  }
 
-      document.body.classList.toggle(
-        'is-hovering-clickable',
-        Boolean(this.hoveredObject)
-      );
-    }
+  updateHoveredObject(object) {
+    if (object === this.hoveredObject) return;
+
+    this.hoveredObject = object;
+
+    document.body.classList.toggle(
+      'is-hovering-clickable',
+      Boolean(this.hoveredObject)
+    );
   }
 
   onClick(event) {
@@ -65,36 +89,138 @@ export default class RaycasterController {
       return;
     }
 
-    const clickedObject = this.getClickTarget(intersections[0].object);
+    const clickedObject = this.getActionableClickTarget(intersections);
 
     if (!clickedObject) {
       return;
     }
 
     const sectionId = clickedObject.userData.sectionId;
-
-    console.log(`Clicked: ${clickedObject.name}`);
-
     const powerExperience = this.world.portfolioModel.powerExperience;
-    if (powerExperience?.handleClick(clickedObject)) {
+
+    if (powerExperience?.isPowerTarget(clickedObject)) {
+      if (!this.interactions.canTogglePower()) return;
+
+      const nextPoweredOn = !powerExperience.poweredOn;
+      this.interactions.beginTransition('power', {
+        nextState: nextPoweredOn
+          ? InteractionState.READY
+          : InteractionState.DARK,
+      });
+
+      if (!powerExperience.handleClick(clickedObject)) {
+        this.interactions.completeTransition('power', {
+          nextState: powerExperience.poweredOn
+            ? InteractionState.READY
+            : InteractionState.DARK,
+        });
+        return;
+      }
+
       if (clickedObject.name === 'CLICK_CHAIN') {
         this.world.portfolioModel.animatorChain?.trigger();
         if (powerExperience.poweredOn) {
+          this.beginMainCameraTransition();
           this.camera.moveToView('case');
         }
       }
-      console.log(`[Raycaster] Power ${powerExperience.poweredOn ? 'on' : 'off'}`);
+
+      if (!powerExperience.isTransitioning) {
+        this.interactions.completeTransition('power', {
+          nextState: powerExperience.poweredOn
+            ? InteractionState.READY
+            : InteractionState.DARK,
+        });
+      }
+
       return;
     }
 
+    if (
+      !sectionId ||
+      !powerExperience?.poweredOn ||
+      !this.interactions.canOpenSection()
+    ) {
+      return;
+    }
+
+    this.interactions.beginTransition(CAMERA_SECTION_TRANSITION, {
+      nextState: InteractionState.SECTION_OPEN,
+    });
     this.sectionPanel.open(sectionId);
     this.camera.setCalibrationTarget(clickedObject);
     this.camera.moveToPreset(clickedObject.name);
 
     if (clickedObject.name === 'CLICK_DUMMY') {
-      console.log('[Raycaster] CLICK_DUMMY received, triggering wave');
       this.world.portfolioModel.dummyAnimator?.triggerWave();
     }
+  }
+
+  beginMainCameraTransition() {
+    this.interactions.beginTransition(CAMERA_MAIN_TRANSITION, {
+      nextState: this.getMainSceneState(),
+    });
+  }
+
+  getMainSceneState() {
+    return this.world.portfolioModel.powerExperience?.poweredOn
+      ? InteractionState.READY
+      : InteractionState.DARK;
+  }
+
+  onCameraTransitionComplete({ presetName } = {}) {
+    if (this.interactions.hasTransition(CAMERA_SECTION_TRANSITION)) {
+      this.interactions.completeTransition(CAMERA_SECTION_TRANSITION, {
+        nextState: InteractionState.SECTION_OPEN,
+      });
+      this.camera.setControlsEnabled(false);
+      return;
+    }
+
+    if (
+      presetName === 'DEFAULT' &&
+      this.interactions.hasTransition(CAMERA_MAIN_TRANSITION)
+    ) {
+      this.interactions.completeTransition(CAMERA_MAIN_TRANSITION, {
+        nextState: this.getMainSceneState(),
+      });
+      this.camera.setControlsEnabled(true);
+    }
+  }
+
+  isClickTargetActionable(object) {
+    if (!object) return false;
+
+    const powerExperience = this.world.portfolioModel.powerExperience;
+    if (powerExperience?.isPowerTarget(object)) {
+      return this.interactions.canTogglePower();
+    }
+
+    return Boolean(
+      object.userData.sectionId &&
+      powerExperience?.poweredOn &&
+      this.interactions.canOpenSection()
+    );
+  }
+
+  getActionableClickTarget(intersections) {
+    const visitedTargets = new Set();
+
+    for (const intersection of intersections) {
+      const target = this.getClickTarget(intersection.object);
+
+      if (!target || visitedTargets.has(target)) {
+        continue;
+      }
+
+      visitedTargets.add(target);
+
+      if (this.isClickTargetActionable(target)) {
+        return target;
+      }
+    }
+
+    return null;
   }
 
   getClickTarget(object) {

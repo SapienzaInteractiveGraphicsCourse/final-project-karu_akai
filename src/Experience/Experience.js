@@ -5,6 +5,7 @@ import Camera from './Camera.js';
 import Renderer from './Renderer.js';
 import World from './World/World.js';
 import RaycasterController from './Controls/RaycasterController.js';
+import InteractionStateManager from './InteractionState.js';
 import DebugUtils from '../utils/DebugUtils.js';
 
 let instance = null;
@@ -20,6 +21,8 @@ export default class Experience {
     this.canvas = canvas;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x05070a);
+    this.interactions = new InteractionStateManager();
+    this.interactionState = this.interactions;
 
     this.sizes = new Sizes();
     this.time = new Time();

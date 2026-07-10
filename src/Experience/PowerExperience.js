@@ -40,6 +40,10 @@ export default class PowerExperience {
     this.transitionStartAmount = 0;
     this.transitionElapsed = 0;
     this.transitionDuration = DESKTOP_VISUAL_CONFIG.intro.transitionDuration;
+    this.isTransitioning = false;
+    this.callbacks = {
+      transitionComplete: [],
+    };
     this.caseLighting = DESKTOP_VISUAL_CONFIG.caseLighting;
 
     this.chainTarget = model?.getObjectByName('CLICK_CHAIN') ?? null;
@@ -114,6 +118,21 @@ export default class PowerExperience {
     return true;
   }
 
+  on(eventName, callback) {
+    if (!this.callbacks[eventName]) return () => {};
+
+    this.callbacks[eventName].push(callback);
+    return () => {
+      this.callbacks[eventName] = this.callbacks[eventName].filter(
+        (registeredCallback) => registeredCallback !== callback
+      );
+    };
+  }
+
+  trigger(eventName, payload) {
+    this.callbacks[eventName]?.forEach((callback) => callback(payload));
+  }
+
   setPoweredOn(poweredOn) {
     const nextState = Boolean(poweredOn);
     if (nextState === this.poweredOn && this.transitionElapsed > 0) return;
@@ -121,6 +140,7 @@ export default class PowerExperience {
     this.poweredOn = nextState;
     this.transitionStartAmount = this.powerAmount;
     this.transitionElapsed = 0;
+    this.isTransitioning = this.powerAmount !== (this.poweredOn ? 1 : 0);
     this.ledController?.setEnabled(true);
     this.fanAnimator?.setEnabled(this.poweredOn);
     this.redrawCpuSbcLabel();
@@ -143,7 +163,15 @@ export default class PowerExperience {
         target,
         easedProgress
       );
-      if (progress >= 1) this.powerAmount = target;
+      if (progress >= 1) {
+        this.powerAmount = target;
+        if (this.isTransitioning) {
+          this.isTransitioning = false;
+          this.trigger('transitionComplete', {
+            poweredOn: this.poweredOn,
+          });
+        }
+      }
     }
 
     this.applyPowerAmount(this.powerAmount);

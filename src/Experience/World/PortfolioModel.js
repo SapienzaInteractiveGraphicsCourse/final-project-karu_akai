@@ -7,6 +7,7 @@ import { TubeFlowAnimator } from '../../animations/TubeFlowAnimator.js';
 import ApplyingTexture from '../../utils/ApplyingTexture.js';
 import CozyLedMaterials from '../../utils/CozyLedMaterials.js';
 import { secureModelMaterials } from '../../utils/ModelMaterialSafety.js';
+import { InteractionState } from '../InteractionState.js';
 import PowerExperience from '../PowerExperience.js';
 import { DESKTOP_VISUAL_CONFIG } from '../VisualConfig.js';
 import ExtraLight from './ExtraLight.js';
@@ -15,16 +16,16 @@ import PlantMaterialTint from './PlantMaterialTint.js';
 
 const CLICK_LAYER = 1;
 const FAN_CONFIGS = [
-  { name: 'FAN_ROT_Y_1', axis: 'y' },
-  { name: 'FAN_ROT_Y_2', axis: 'y' },
-  { name: 'FAN_ROT_Y_3', axis: 'y' },
-  {name: 'FAN_ROT_Z_1',axis: 'z'},
-  {name: 'FAN_ROT_Z_2',axis: 'z'},
-  {name: 'FAN_ROT_Z_3',axis: 'z'},
-  { name: 'FAN_ROT_Z_4', axis: 'z' },
-  { name: 'FAN_ROT_Z_5', axis: 'z' },
-  { name: 'FAN_ROT_Z_6', axis: 'z' },
-  { name: 'FAN_ROT_X', axis: 'x' },
+  { name: 'FAN_ROT_Y_1', axis: 'y', speedMultiplier: 0.96 },
+  { name: 'FAN_ROT_Y_2', axis: 'y', speedMultiplier: 1.02 },
+  { name: 'FAN_ROT_Y_3', axis: 'y', speedMultiplier: 1.06 },
+  { name: 'FAN_ROT_Z_1', axis: 'z', speedMultiplier: 0.94 },
+  { name: 'FAN_ROT_Z_2', axis: 'z', speedMultiplier: 1.00 },
+  { name: 'FAN_ROT_Z_3', axis: 'z', speedMultiplier: 1.04 },
+  { name: 'FAN_ROT_Z_4', axis: 'z', speedMultiplier: 0.98 },
+  { name: 'FAN_ROT_Z_5', axis: 'z', speedMultiplier: 1.07 },
+  { name: 'FAN_ROT_Z_6', axis: 'z', speedMultiplier: 0.92 },
+  { name: 'FAN_ROT_X', axis: 'x', speedMultiplier: 1.03 },
  ];
 
 const DEBUG_DUMMY_HIERARCHY = false;
@@ -229,6 +230,7 @@ export default class PortfolioModel {
             this.fanRotors.push({
               object: rotorObject,
               axis: config.axis,
+              speedMultiplier: config.speedMultiplier ?? 1,
             });
           } else {
             console.warn(`[FAN MISSING] ${config.name}`);
@@ -250,6 +252,17 @@ export default class PortfolioModel {
           cpuCentralLightRing: this.cpuCentralLightRing,
           cpuCentralLightRingMeshes: this.cpuCentralLightRingMeshes,
           fanAnimator: this.fanAnimator,
+        });
+
+        this.powerExperience.on('transitionComplete', ({ poweredOn }) => {
+          const interactions = this.experience.interactions;
+          if (!interactions?.hasTransition('power')) return;
+
+          interactions.completeTransition('power', {
+            nextState: poweredOn
+              ? InteractionState.READY
+              : InteractionState.DARK,
+          });
         });
 
         this.extraLight = new ExtraLight(this.scene, {
@@ -734,8 +747,12 @@ export default class PortfolioModel {
 
     this.introElapsed += Math.min(delta ?? 0, 100) / 1000;
     if (this.introElapsed < DESKTOP_VISUAL_CONFIG.intro.delay) return;
+    if (!this.experience.interactions?.canTogglePower()) return;
 
     this.introTriggered = true;
+    this.experience.interactions?.beginTransition('power', {
+      nextState: InteractionState.READY,
+    });
     this.powerExperience.setPoweredOn(true);
   }
 

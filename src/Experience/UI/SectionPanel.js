@@ -5,6 +5,7 @@ const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 const ACADEMIC_SECTION_ID = 'academic';
 const PROJECTS_SECTION_ID = 'projects';
 const EXPERIENCE_SECTION_ID = 'experience';
+const INTERESTS_SECTION_ID = 'interests';
 const ACADEMIC_TAB_KEYS = new Set([
   'ArrowLeft',
   'ArrowRight',
@@ -13,7 +14,8 @@ const ACADEMIC_TAB_KEYS = new Set([
 ]);
 
 export default class SectionPanel {
-  constructor({ onClose } = {}) {
+  constructor({ canClose = () => true, onClose } = {}) {
+    this.canClose = canClose;
     this.onClose = onClose;
     this.panel = document.querySelector('#section-panel');
     this.title = document.querySelector('#section-panel-title');
@@ -88,17 +90,27 @@ export default class SectionPanel {
       'section-panel--experience',
       sectionId === EXPERIENCE_SECTION_ID,
     );
+    this.panel.classList.toggle(
+      'section-panel--interests',
+      sectionId === INTERESTS_SECTION_ID,
+    );
     this.panel.classList.add('visible');
     this.renderCurrentPage();
   }
 
-  close({ notify = false } = {}) {
+  close({ notify = false, force = false } = {}) {
+    if (notify && !force && !this.canClose()) {
+      return false;
+    }
+
     this.panel?.classList.remove('visible');
     this.resetState();
 
     if (notify) {
       this.onClose?.();
     }
+
+    return true;
   }
 
   nextPage() {
@@ -869,6 +881,7 @@ export default class SectionPanel {
     this.panel?.classList.remove('section-panel--academic');
     this.panel?.classList.remove('section-panel--projects');
     this.panel?.classList.remove('section-panel--experience');
+    this.panel?.classList.remove('section-panel--interests');
     this.clearAcademicContent();
     this.clearProjectsContent();
     this.clearWorkExperienceContent();

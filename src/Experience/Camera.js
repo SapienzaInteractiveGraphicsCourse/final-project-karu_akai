@@ -107,12 +107,14 @@ export default class Camera {
       const key = event.key.toLowerCase();
 
       if (key === 'f') {
+        if (this.experience.interactions?.isInteractionLocked()) return;
         this.frameCalibrationTarget();
       } else if (key === 'p') {
         this.logCurrentPreset();
       } else if (key === 'd') {
         this.logCurrentPreset('DEFAULT');
       } else if (key === '0') {
+        if (this.experience.interactions?.isInteractionLocked()) return;
         this.moveToDefault();
       }
     });
@@ -209,6 +211,11 @@ export default class Camera {
 
   moveToDefault() {
     this.moveToPreset('DEFAULT');
+  }
+
+  setControlsEnabled(enabled) {
+    this.controls.enabled = Boolean(enabled);
+    this.controls.update();
   }
 
   setCalibrationTarget(object) {

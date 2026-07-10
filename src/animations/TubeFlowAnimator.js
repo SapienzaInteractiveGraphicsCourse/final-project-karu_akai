@@ -108,7 +108,6 @@ export class TubeFlowAnimator {
     this.group = new THREE.Group();
     this.group.name = 'TubeFlowAnimator_Group';
     this.group.visible = true;
-    this.group.renderOrder = 999;
     this.group.frustumCulled = false;
     if (this.parent) {
       this.parent.add(this.group);
@@ -241,9 +240,9 @@ export class TubeFlowAnimator {
         sphere.position.copy(curve.getPointAt(sphere.userData.offset));
         sphere.castShadow = false;
         sphere.receiveShadow = false;
-        sphere.renderOrder = 999;
         sphere.frustumCulled = false;
-        sphere.material.depthTest = false;
+        sphere.material.depthTest = true;
+        sphere.material.depthWrite = true;
 
         group.add(sphere);
         this.spheres.push(sphere);
