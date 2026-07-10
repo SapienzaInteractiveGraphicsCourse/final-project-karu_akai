@@ -122,6 +122,84 @@ body {
   text-transform: uppercase;
 }
 
+#panel-content {
+  grid-column: 2;
+  min-width: 0;
+  min-height: 150px;
+}
+
+#panel-page-layout {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 14px;
+}
+
+.panel-page-arrow {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  color: rgba(145, 225, 255, 0.82);
+  background: transparent;
+  cursor: pointer;
+  filter: drop-shadow(0 0 4px rgba(145, 225, 255, 0.42));
+  transition:
+    color 0.2s ease,
+    filter 0.2s ease,
+    transform 0.2s ease;
+}
+
+.panel-page-arrow-previous {
+  grid-column: 1;
+}
+
+.panel-page-arrow-next {
+  grid-column: 3;
+}
+
+.panel-page-arrow::before {
+  content: "";
+  display: block;
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+}
+
+.panel-page-arrow-previous::before {
+  border-right: 11px solid currentColor;
+}
+
+.panel-page-arrow-next::before {
+  border-left: 11px solid currentColor;
+}
+
+.panel-page-arrow:hover,
+.panel-page-arrow:focus-visible {
+  color: rgba(145, 225, 255, 0.96);
+  filter: drop-shadow(0 0 5px rgba(145, 225, 255, 0.58));
+  transform: scale(1.04);
+}
+
+.panel-page-arrow[hidden] {
+  display: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 #close-panel {
   position: absolute;
   top: 12px;

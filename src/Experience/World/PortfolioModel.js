@@ -39,8 +39,20 @@ const CPU_CORE_SCALE = 1;
 
 const SECTION_BY_OBJECT = {
   CLICK_DUMMY: {
-    title: 'Intro',
-    text: 'Dummy introduces the interactive portfolio and guides the visitor through the scene.',
+    pages: [
+      {
+        title: 'Intro',
+        text: 'Dummy introduces the interactive portfolio and guides the visitor through the scene.',
+      },
+      {
+        title: 'About me',
+        text: 'Personal profile, background, and main interests.',
+      },
+      {
+        title: 'Contact me',
+        text: 'Contact information and external links.',
+      },
+    ],
   },
   CLICK_CPU: {
     title: 'About me',
