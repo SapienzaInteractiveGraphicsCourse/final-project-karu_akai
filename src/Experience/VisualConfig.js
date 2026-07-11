@@ -73,10 +73,10 @@ export const DESKTOP_VISUAL_CONFIG = Object.freeze({
       contrast: 1.055,
     },
   },
-  //regulation of the light intensity and color for the different light sources in the scene
+  // Keep image-based lighting subordinate to the authored lamp and case LEDs.
   environment: {
-    environmentIntensityOff: 0.070,
-    environmentIntensityOn: 0.27,
+    environmentIntensityOff: 0.05,
+    environmentIntensityOn: 0.12,
     backgroundIntensityOff: 0.7,
     backgroundIntensityOn: 1.0,
   },
