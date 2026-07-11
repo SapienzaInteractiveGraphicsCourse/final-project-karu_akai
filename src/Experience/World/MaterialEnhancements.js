@@ -57,13 +57,15 @@ export default class MaterialEnhancements {
   }
 
   enhanceTable(material) {
-    if ('roughness' in material) material.roughness = 0.52;
+    // The table should read as matte wood, not as a broad reflector of the
+    // neutral RoomEnvironment. Local lamp and LED lights remain visible.
+    if ('roughness' in material) material.roughness = 0.68;
     if ('metalness' in material) material.metalness = 0;
-    if ('envMapIntensity' in material) material.envMapIntensity = 0.56;
-    if ('clearcoat' in material) material.clearcoat = 0.08;
-    if ('clearcoatRoughness' in material) material.clearcoatRoughness = 0.62;
+    if ('envMapIntensity' in material) material.envMapIntensity = 0.18;
+    if ('clearcoat' in material) material.clearcoat = 0.02;
+    if ('clearcoatRoughness' in material) material.clearcoatRoughness = 0.72;
     if (material.color) material.color.lerp(new THREE.Color(0x56382b), 0.16);
-    if (material.normalScale) material.normalScale.setScalar(0.58);
+    if (material.normalScale) material.normalScale.setScalar(0.4);
     [material.map, material.roughnessMap, material.normalMap].forEach((texture) => {
       if (texture) texture.anisotropy = Math.max(texture.anisotropy ?? 1, 8);
     });
@@ -97,7 +99,9 @@ export default class MaterialEnhancements {
     }
 
     if ('roughness' in material) material.roughness = 0.48;
-    if ('metalness' in material) material.metalness = Math.min(material.metalness ?? 0, 0.12);
+    if ('metalness' in material) {
+      material.metalness = Math.min(material.metalness ?? 0, 0.12);
+    }
     if ('envMapIntensity' in material) material.envMapIntensity = 0.78;
     if ('bumpMap' in material && !material.bumpMap) {
       material.bumpMap = this.lampBumpTexture;
@@ -112,13 +116,35 @@ export default class MaterialEnhancements {
   }
 
   enhanceHardware(material, role) {
-    const isMetal = role !== 'fan' || (material.metalness ?? 0) > 0.15;
+    const sourceMetalness = material.metalness ?? 0;
+
+    // The exterior marble shares the broad `case` role with some metallic
+    // internals. Preserve the distinction using the authored metalness value.
+    if (role === 'case' && sourceMetalness <= 0.15) {
+      if ('roughness' in material) {
+        material.roughness = THREE.MathUtils.clamp(
+          material.roughness ?? 0.65,
+          0.62,
+          0.72
+        );
+      }
+      if ('metalness' in material) material.metalness = 0;
+      if ('envMapIntensity' in material) material.envMapIntensity = 0.32;
+      return;
+    }
+
+    const isMetal =
+      ['component', 'hardware'].includes(role) ||
+      ((role === 'fan' || role === 'case') && sourceMetalness > 0.15);
+
     if ('roughness' in material) {
       material.roughness = isMetal
-        ? THREE.MathUtils.clamp(material.roughness ?? 0.55, 0.3, 0.58)
-        : THREE.MathUtils.clamp(material.roughness ?? 0.62, 0.5, 0.72);
+        ? THREE.MathUtils.clamp(material.roughness ?? 0.55, 0.34, 0.62)
+        : THREE.MathUtils.clamp(material.roughness ?? 0.62, 0.54, 0.74);
     }
-    if ('envMapIntensity' in material) material.envMapIntensity = isMetal ? 0.9 : 0.55;
+    if ('envMapIntensity' in material) {
+      material.envMapIntensity = isMetal ? 0.7 : 0.4;
+    }
   }
 
   createLampBumpTexture() {
