@@ -4,12 +4,12 @@ import { DummyAnimator } from '../../animations/DummyAnimator.js';
 import { AnimatorChain } from '../../animations/AnimatorChain.js';
 import { FanAnimator } from '../../animations/FanAnimator.js';
 import { TubeFlowAnimator } from '../../animations/TubeFlowAnimator.js';
-import ApplyingTexture from '../../utils/ApplyingTexture.js';
-import CozyLedMaterials from '../../utils/CozyLedMaterials.js';
+import ApplyingTexture from '../../Utility/ApplyingTexture.js';
+import CozyLedMaterials from '../../Utility/CozyLedMaterials.js';
 import {
   isExplicitGlassObject,
   secureModelMaterials,
-} from '../../utils/ModelMaterialSafety.js';
+} from '../../Utility/ModelMaterialSafety.js';
 import { InteractionState } from '../InteractionState.js';
 import PowerExperience from '../PowerExperience.js';
 import { DESKTOP_VISUAL_CONFIG } from '../VisualConfig.js';
@@ -31,9 +31,6 @@ const FAN_CONFIGS = [
   { name: 'FAN_ROT_X', axis: 'x', speedMultiplier: 1.03 },
  ];
 
-const DEBUG_DUMMY_HIERARCHY = false;
-const DEBUG_TRANSPARENT_MATERIALS = false;
-const DEBUG_MODEL_DIAGNOSTICS = false;
 const CPU_RING_RADIUS = 0.31;
 const CPU_RING_TUBE_RADIUS = 0.017;
 const CPU_CORE_OFFSET_X = 0;
@@ -141,22 +138,14 @@ export default class PortfolioModel {
         // Isolate shared GLTF material instances before changing render flags.
         secureModelMaterials(this.loadedModel, {
           cloneMaterials: true,
-          debug: DEBUG_TRANSPARENT_MATERIALS,
+          debug: false,
         });
         this.cozyLedMaterials.applyToModel(this.loadedModel);
         this.applyCpuCentralDiscMaterial();
-        if (DEBUG_MODEL_DIAGNOSTICS) this.logMaterialDiagnostics();
-
         this.scene.add(this.loadedModel);
         this.placeholderGroup.visible = false;
 
         const dummyRoot = this.loadedModel.getObjectByName('Dummy_root');
-
-        if (DEBUG_DUMMY_HIERARCHY) {
-          dummyRoot?.traverse((child) => {
-            console.log(child.name, child.type);
-          });
-        }
 
         this.dummyAnimator = new DummyAnimator({
           dummyRoot,
@@ -194,8 +183,7 @@ export default class PortfolioModel {
 
         this.materialEnhancements.apply(this.loadedModel);
         this.plantMaterialTint.apply(this.loadedModel);
-
-        if (DEBUG_MODEL_DIAGNOSTICS) this.logModelDiagnostics();
+        this.experience.debugUtils?.setModel(this.loadedModel);
 
         if (!cpuCentralRingObject || cpuCentralRingMeshes.length === 0) {
           console.warn('[PORTFOLIO MODEL] CPU_CENTRAL_RING was not found or contains no mesh children. CPU central ring will not be enabled.');
@@ -289,7 +277,7 @@ export default class PortfolioModel {
         };
 
         this.powerExperience.setPoweredOn(this.powerExperience.poweredOn);
-        this.hideLoadingScreen();
+        this.hideLoadingScreen({ modelLoaded: true });
       },
       undefined,
       (error) => {
@@ -558,9 +546,6 @@ export default class PortfolioModel {
 
     if (discTypo && !discCorrect) {
       discTypo.name = 'CPU_CENTRAL_DISC';
-      console.warn(
-        '[PORTFOLIO MODEL] Renamed GLB node CPU_CENTRAL_DISCK to CPU_CENTRAL_DISC to preserve the separate CPU disc mesh.'
-      );
     }
   }
 
@@ -602,36 +587,6 @@ export default class PortfolioModel {
       side: THREE.DoubleSide,
       transparent: false,
       opacity: 1,
-    });
-  }
-
-  logMaterialDiagnostics() {
-    this.loadedModel?.traverse((object) => {
-      const name = object.name ?? '';
-      const shouldLog =
-        /^cpu_central$/i.test(name) ||
-        /^cpu_core_/i.test(name) ||
-        /(?:tube|tubes|pipe|hose|cooling)/i.test(name);
-      if (!object.isMesh || !shouldLog) return;
-
-      const materials = Array.isArray(object.material)
-        ? object.material
-        : [object.material];
-      materials.forEach((material, slot) => {
-        console.log('[Material diagnostic]', {
-          mesh: name,
-          slot,
-          material: material?.name,
-          color: material?.color
-            ? `#${material.color.getHexString()}`
-            : null,
-          emissive: material?.emissive
-            ? `#${material.emissive.getHexString()}`
-            : null,
-          opacity: material?.opacity,
-          transparent: material?.transparent,
-        });
-      });
     });
   }
 
@@ -768,140 +723,8 @@ export default class PortfolioModel {
 
   this.scene.add(shadow);
 
-  const gap = dummyBounds.min.y - tableBounds.max.y;
-
-  console.info('[DummyContactShadow]', {
-    gap,
-    width,
-    depth,
-    position: shadow.position.toArray(),
-  });
-
   return shadow;
 }
-
-  logModelDiagnostics() {
-    if (!this.loadedModel) return;
-
-    const meshes = [];
-    const materialSet = new Set();
-    const largeTextures = [];
-    const materialNameCounts = new Map();
-
-    this.loadedModel.traverse((object) => {
-      if (!object.isMesh || !object.geometry) return;
-
-      const geometry = object.geometry;
-      const triangleCount = this.getApproximateTriangleCount(geometry);
-      const materials = Array.isArray(object.material)
-        ? object.material
-        : object.material
-          ? [object.material]
-          : [];
-
-      materials.forEach((material) => {
-        if (material) materialSet.add(material);
-        if (material?.isMaterial) {
-          const baseName = this.getMaterialBaseName(material.name || '');
-          materialNameCounts.set(baseName, (materialNameCounts.get(baseName) || 0) + 1);
-
-          const textureEntries = this.collectMaterialTextures(material);
-          textureEntries.forEach((textureInfo) => {
-            if (textureInfo.width >= 2048 || textureInfo.height >= 2048) {
-              largeTextures.push(textureInfo);
-            }
-          });
-        }
-      });
-
-      meshes.push({
-        name: object.name || '(unnamed)',
-        triangleCount,
-        materialCount: materials.length,
-        materialName: materials[0]?.name || '(none)',
-        parentName: object.parent?.name || '(root)',
-        visible: object.visible,
-        castShadow: object.castShadow,
-        receiveShadow: object.receiveShadow,
-      });
-    });
-
-    meshes.sort((a, b) => b.triangleCount - a.triangleCount);
-
-    const duplicateMaterialNames = [...materialNameCounts.entries()]
-      .filter(([, count]) => count > 1)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20);
-
-    console.groupCollapsed('[PORTFOLIO MODEL] GLB diagnostics');
-    console.log('Mesh count', meshes.length);
-    console.log('Approximate triangle count', meshes.reduce((sum, mesh) => sum + mesh.triangleCount, 0));
-    console.log('Material count', materialSet.size);
-    console.log('Top 30 heaviest meshes', meshes.slice(0, 30).map((mesh) => ({
-      name: mesh.name,
-      triangles: mesh.triangleCount,
-      material: mesh.materialName,
-      parent: mesh.parentName,
-      visible: mesh.visible,
-      castShadow: mesh.castShadow,
-      receiveShadow: mesh.receiveShadow,
-    })));
-    console.log('Duplicate material names (base name)', duplicateMaterialNames);
-    console.log('Large textures', largeTextures.slice(0, 20));
-    console.groupEnd();
-  }
-
-  getMaterialBaseName(name) {
-    if (!name) return '(unnamed)';
-    const match = name.match(/^(.*?)(?:\.\d+)?$/);
-    return match?.[1] || name;
-  }
-
-  getApproximateTriangleCount(geometry) {
-    if (!geometry) return 0;
-
-    if (geometry.index) {
-      return Math.max(0, geometry.index.count / 3);
-    }
-
-    const positionAttribute = geometry.getAttribute?.('position');
-    return positionAttribute ? Math.max(0, positionAttribute.count / 3) : 0;
-  }
-
-  collectMaterialTextures(material) {
-    if (!material?.isMaterial) return [];
-
-    const textures = [];
-    const textureKeys = [
-      'map',
-      'aoMap',
-      'bumpMap',
-      'normalMap',
-      'displacementMap',
-      'emissiveMap',
-      'envMap',
-      'metalnessMap',
-      'roughnessMap',
-      'alphaMap',
-    ];
-
-    textureKeys.forEach((textureKey) => {
-      const texture = material[textureKey];
-      if (!texture?.image) return;
-
-      const width = texture.image.width ?? 0;
-      const height = texture.image.height ?? 0;
-      textures.push({
-        key: textureKey,
-        name: texture.name || textureKey,
-        width,
-        height,
-        src: texture.image.currentSrc || texture.image.src || null,
-      });
-    });
-
-    return textures;
-  }
 
   setupClickTarget(object) {
     object.layers.set(CLICK_LAYER);
@@ -925,8 +748,9 @@ export default class PortfolioModel {
     this.clickTargets.push(object);
   }
 
-  hideLoadingScreen() {
+  hideLoadingScreen({ modelLoaded = false } = {}) {
     this.loadingScreen?.classList.add('hidden');
+    if (modelLoaded) this.experience.onPortfolioModelLoaded?.();
   }
 
   toggleFans() {

@@ -5,7 +5,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { COZY_BLOOM_LAYER } from '../utils/CozyLedMaterials.js';
+import { COZY_BLOOM_LAYER } from '../Utility/CozyLedMaterials.js';
 import { DESKTOP_VISUAL_CONFIG } from './VisualConfig.js';
 
 const { renderer: RENDERER_CONFIG, postProcessing: POST_CONFIG } =

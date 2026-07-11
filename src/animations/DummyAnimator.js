@@ -46,17 +46,19 @@ export class DummyAnimator {
       head: this.head?.rotation.clone(),
     };
 
-    console.log('[DummyAnimator] parts:', {
-      body: this.body?.name,
-      neck: this.neck?.name,
-      head: this.head?.name,
-      rightShoulderAnchor: this.rightShoulderAnchor?.name,
-      rightElbowAnchor: this.rightElbowAnchor?.name,
-      rightWristAnchor: this.rightWristAnchor?.name,
-      rightUpperArm: this.rightUpperArm?.name,
-      rightForearm: this.rightForearm?.name,
-      rightHand: this.rightHand?.name,
-    });
+    if (this.debug) {
+      console.log('[DummyAnimator] parts:', {
+        body: this.body?.name,
+        neck: this.neck?.name,
+        head: this.head?.name,
+        rightShoulderAnchor: this.rightShoulderAnchor?.name,
+        rightElbowAnchor: this.rightElbowAnchor?.name,
+        rightWristAnchor: this.rightWristAnchor?.name,
+        rightUpperArm: this.rightUpperArm?.name,
+        rightForearm: this.rightForearm?.name,
+        rightHand: this.rightHand?.name,
+      });
+    }
 
     this.setupRightShoulderPivot();
     this.setupRightElbowPivot();
@@ -107,9 +109,11 @@ export class DummyAnimator {
     this.rightShoulderPivot = pivot;
     this.rightShoulderNeutralRotation = pivot.rotation.clone();
 
-    console.log(
-      '[DummyAnimator] rightShoulderPivot created at Dummy_shoulder_right'
-    );
+    if (this.debug) {
+      console.log(
+        '[DummyAnimator] rightShoulderPivot created at Dummy_shoulder_right'
+      );
+    }
   }
 
   setupRightElbowPivot() {
@@ -170,7 +174,7 @@ export class DummyAnimator {
   }
 
   triggerWave() {
-    console.log('[DummyAnimator] triggerWave called');
+    if (this.debug) console.log('[DummyAnimator] triggerWave called');
 
     if (!this.rightShoulderPivot) {
       this.setupRightShoulderPivot();
@@ -195,7 +199,7 @@ export class DummyAnimator {
 
     this.isWaving = true;
     this.waveTime = 0;
-    console.log('[DummyAnimator] wave started');
+    if (this.debug) console.log('[DummyAnimator] wave started');
   }
 
   onPointerMove(event) {

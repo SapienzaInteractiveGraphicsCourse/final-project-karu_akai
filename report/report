@@ -1,0 +1,526 @@
+\documentclass{report}
+
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+
+\hypersetup{
+    colorlinks=true,
+    urlcolor=blue,
+    linkcolor=black
+}
+
+\definecolor{projectgold}{HTML}{B89B68}
+\definecolor{projectdark}{HTML}{25221F}
+
+\begin{document}
+
+% --- INIZIO COPERTINA ---
+\begin{titlepage}
+    \thispagestyle{empty}
+
+    \begin{center}
+
+        % University logo
+        \includegraphics[width=0.24\textwidth]{images/sapienza-logo.png}
+
+        \vspace{0.6cm}
+
+        {\large
+        Sapienza University of Rome\\
+        Department of Computer, Control and Management Engineering\\
+        Interactive Graphics Course
+        }
+
+        \vspace{1.8cm}
+
+        % Project title
+        {\fontsize{32}{38}\selectfont
+        \bfseries
+        \textcolor{projectdark}{Inside My System}
+        }
+
+        \vspace{0.35cm}
+
+        {\Large
+        \textcolor{projectgold}{
+        An Interactive 3D Portfolio Built with Three.js and WebGL
+        }
+        }
+
+        \vspace{1.3cm}
+
+        % Main project image
+        \includegraphics[
+            width=\textwidth,
+            height=0.40\textheight,
+            keepaspectratio
+        ]{images/cover-scene.jpg}
+
+        \vfill
+
+        % Author and course information
+        \begin{tabular}{rl}
+            \textbf{Student:} &
+            Sara Cristina Basco \\[0.15cm]
+
+            \textbf{Student ID:} &
+            2256687 \\[0.15cm]
+
+            \textbf{Professor:} &
+            Prof. Marco Schaerf \\[0.15cm]
+
+            \textbf{Academic Year:} &
+            2025--2026
+        \end{tabular}
+
+        \vspace{0.8cm}
+
+        % Project links
+        {\small
+        \textbf{Live project:}
+        \href{YOUR-GITHUB-PAGES-URL}{GitHub Pages}
+        \hspace{1cm}
+        \textbf{Source code:}
+        \href{YOUR-REPOSITORY-URL}{GitHub Repository}
+        }
+
+        \vspace{0.4cm}
+
+    \end{center}
+\end{titlepage}
+\section{Project Overview}
+
+\textit{Inside My System} is an interactive 3D portfolio developed as the final project for the Interactive Graphics course. The project combines two central parts of my personal and academic background: computer engineering and illustration. Rather than presenting my experiences through a conventional portfolio website, I wanted to create an environment that users could gradually explore, turning the presentation of my work into a small visual narrative.
+
+A central element of this narrative is Dummy, a recurring character in my illustrations. Over time, Dummy has become one of the most recognisable elements of my visual language: a figure through which I can represent ideas, emotions and personal experiences without relying on a realistic self-portrait. Its presence in the project creates continuity between my illustration practice and the interactive environment. Dummy is therefore not merely a decorative model placed inside the scene, but a visual representation of the personal and creative dimension of the portfolio.
+
+The idea of placing the portfolio inside a computer case emerged from a conversation with my roommate. I had told her that, as a child, I used to imagine computer motherboards as miniature cities: complex landscapes made of small buildings, streets and interconnected structures. Starting from this memory, she suggested transforming the interior of a computer case into the setting of the project. This idea became the foundation of \textit{Inside My System}, where the components of a computer are reinterpreted as parts of a small inhabited world.
+
+The title refers both to the physical computer system represented by the case and to the personal system of interests, experiences and skills contained within it. The user initially enters a dark environment and is invited to turn on a lamp. This action activates the computer and reveals the main scene, from which the different sections of the portfolio can be explored. Through lighting, camera movements, animated components and interactive labels, the project gradually introduces its contents while preserving the atmosphere of discovery that inspired its original concept.
+
+\section{Requirements and Implemented Features}
+
+The project was designed to satisfy the main requirements of the
+Interactive Graphics course. Table~\ref{tab:requirements} provides a
+concise overview; the individual features are discussed in greater
+detail in the following sections.
+
+\begin{table}[ht]
+    \centering
+    \small
+    \setlength{\tabcolsep}{8pt}
+    \renewcommand{\arraystretch}{1.25}
+
+    \begin{tabularx}{\textwidth}{
+        @{}
+        >{\bfseries\raggedright\arraybackslash}p{0.28\textwidth}
+        >{\raggedright\arraybackslash}X
+        @{}
+    }
+        \toprule
+        Requirement & Implementation \\
+        \midrule
+
+        Complex hierarchical model
+        &
+        The lamp, its chain and the computer case components are organised
+        through parent--child groups and coordinated transformations.
+        \\
+
+        Lights and textures
+        &
+        The scene combines multiple light sources with PBR materials,
+        colour maps, normal maps, roughness, transparency and emissive
+        properties.
+        \\
+
+        User interaction
+        &
+        Raycasting and interface controls allow the user to activate the
+        lamp and explore the portfolio sections.
+        \\
+
+        Programmatic animations
+        &
+        Camera movements, lighting transitions and activation effects are
+        implemented directly in JavaScript.
+        \\
+
+        Online deployment
+        &
+        The application is built with Vite and deployed through GitHub Pages.
+        \\
+
+        \bottomrule
+    \end{tabularx}
+
+    \caption{Summary of the course requirements implemented in the project.}
+    \label{tab:requirements}
+\end{table}
+
+\section{Development Environment and Technologies}
+
+\textit{Inside My System} was developed as a browser-based interactive
+application using JavaScript and Three.js. The development process was
+carried out on Linux, using a modular project structure and a local
+development server provided by Vite.
+
+Three.js was selected as the main graphics library because it provides
+a higher-level interface to WebGL while preserving direct control over
+the fundamental elements of a real-time three-dimensional application,
+including scenes, cameras, lights, materials, textures, meshes and the
+rendering loop. This made it possible to focus on the design of the
+interactive experience without having to manually implement the
+lower-level WebGL initialisation and buffer-management procedures.
+
+Vite was used as the development and build tool. During development, it
+provided a fast local server and automatic module reloading. For the
+final release, it generated the optimised production bundle deployed
+through GitHub Pages.
+
+The three-dimensional assets were created and prepared in Blender.
+Models were exported in the binary glTF format (\texttt{.glb}), which
+can preserve mesh geometry, materials, object hierarchies and texture
+references in a format suitable for web applications. The imported
+models were then positioned, configured and animated programmatically
+inside the Three.js scene.
+
+Table~\ref{tab:technologies} summarises the main technologies used in
+the project.
+
+\begin{table}[ht]
+    \centering
+    \small
+    \setlength{\tabcolsep}{8pt}
+    \renewcommand{\arraystretch}{1.25}
+
+    \begin{tabularx}{\textwidth}{
+        @{}
+        >{\bfseries\raggedright\arraybackslash}p{0.24\textwidth}
+        >{\raggedright\arraybackslash}p{0.25\textwidth}
+        >{\raggedright\arraybackslash}X
+        @{}
+    }
+        \toprule
+        Technology & Category & Role in the project \\
+        \midrule
+
+        JavaScript
+        &
+        Programming language
+        &
+        Application logic, scene management, interactions and animations.
+        \\
+
+        Three.js
+        &
+        Graphics library
+        &
+        Real-time 3D rendering, cameras, lights, materials, models and
+        raycasting.
+        \\
+
+        WebGL
+        &
+        Graphics API
+        &
+        Hardware-accelerated rendering inside the web browser.
+        \\
+
+        Vite
+        &
+        Build tool
+        &
+        Local development server, module management and production build.
+        \\
+
+        Blender
+        &
+        3D modelling tool
+        &
+        Modelling, scene preparation, material setup and GLB export.
+        \\
+
+        HTML and CSS
+        &
+        Interface technologies
+        &
+        Portfolio windows, textual content, controls and responsive layout.
+        \\
+
+        Git and GitHub
+        &
+        Version control
+        &
+        Source-code management, project repository and deployment workflow.
+        \\
+
+        GitHub Pages
+        &
+        Hosting platform
+        &
+        Public distribution of the final browser-based application.
+        \\
+
+        \bottomrule
+    \end{tabularx}
+
+    \caption{Main technologies used for the development of the project.}
+    \label{tab:technologies}
+\end{table}
+
+\subsection{External Resources}
+
+All external libraries and assets used in the project are documented
+with their respective source and purpose. The application logic,
+interaction system and animations were implemented specifically for
+the project, while third-party tools and resources were used to support
+the development and visual production process.
+
+\begin{table}[ht]
+    \centering
+    \small
+    \setlength{\tabcolsep}{8pt}
+    \renewcommand{\arraystretch}{1.25}
+
+    \begin{tabularx}{\textwidth}{
+        @{}
+        >{\bfseries\raggedright\arraybackslash}p{0.25\textwidth}
+        >{\raggedright\arraybackslash}X
+        >{\raggedright\arraybackslash}p{0.22\textwidth}
+        @{}
+    }
+        \toprule
+        Resource & Purpose & Source \\
+        \midrule
+
+        Three.js
+        &
+        3D rendering library.
+        &
+        Official package
+        \\
+
+        Vite
+        &
+        Development and production build system.
+        &
+        Official package
+        \\
+
+        External texture sets
+        &
+        Surface appearance for selected scene elements.
+        &
+        To be completed
+        \\
+
+        Icon set
+        &
+        Social and contact icons used in the portfolio interface.
+        &
+        To be completed
+        \\
+
+        Background image
+        &
+        Environmental background of the final scene.
+        &
+        Original / to verify
+        \\
+
+        \bottomrule
+    \end{tabularx}
+
+    \caption{External libraries and visual resources used in the project.}
+    \label{tab:external-resources}
+\end{table}
+
+\section{Software Architecture}
+
+The application is organised as a collection of JavaScript ES modules,
+each responsible for a specific part of the interactive experience. The
+architecture is centred around the \texttt{Experience} class, which acts
+as the main coordinator and provides the shared references required by
+the other components.
+
+The application entry point, \texttt{main.js}, creates a single
+\texttt{Experience} instance associated with the WebGL canvas. The class
+implements a singleton-like pattern: if an instance already exists, the
+same object is returned instead of creating a second application state.
+This ensures that the scene, camera, renderer and world components share
+a single consistent context.
+
+\subsection{Core Application Structure}
+
+During construction, \texttt{Experience} creates the main
+\texttt{THREE.Scene} and initialises the utilities and subsystems required
+by the application:
+
+\begin{itemize}
+    \item \texttt{Sizes}, which stores the current viewport dimensions and
+    device pixel ratio;
+    \item \texttt{Time}, which generates the continuous update events;
+    \item \texttt{Camera}, which manages the perspective camera, controls
+    and animated viewpoints;
+    \item \texttt{Renderer}, which manages WebGL rendering and
+    post-processing;
+    \item \texttt{World}, which creates the environment and loads the main
+    portfolio model;
+    \item \texttt{RaycasterController}, which manages pointer-based
+    interaction with the scene.
+\end{itemize}
+
+The main logical relationships between these components can be
+represented as follows:
+
+\begin{figure}[ht]
+    \centering
+    \small
+    \begin{minipage}{0.78\textwidth}
+        \begin{verbatim}
+main.js
+   |
+   +-- Experience
+       |
+       +-- Sizes
+       +-- Time
+       +-- Camera
+       +-- Renderer
+       +-- RaycasterController
+       |
+       +-- World
+           |
+           +-- Environment
+           +-- PortfolioModel
+               |
+               +-- PowerExperience
+               +-- DummyAnimator
+               +-- AnimatorChain
+               +-- FanAnimator
+               +-- TubeFlowAnimator
+        \end{verbatim}
+    \end{minipage}
+    \caption{Simplified architecture of the application.}
+    \label{fig:software-architecture}
+\end{figure}
+
+The \texttt{World} class has a deliberately limited responsibility. It
+creates an \texttt{Environment} instance and a \texttt{PortfolioModel}
+instance, and forwards frame updates to the latter. The environment
+configures the background, the scene environment map and the main
+ambient, hemispherical, directional and point lights.
+
+\subsection{Model Loading and Runtime Configuration}
+
+The main scene is stored in the
+\texttt{public/models/portfolio\_case.glb} file and is loaded
+asynchronously by \texttt{PortfolioModel} through
+\texttt{GLTFLoader}. Before the model becomes available, a simplified
+placeholder scene is displayed. If the GLB file cannot be loaded, the
+placeholder remains visible and the application reports a warning
+instead of failing completely.
+
+After loading, the model is processed through a sequence of specialised
+components. \texttt{ApplyingTexture} assigns texture maps according to
+mesh, material and parent names. \texttt{ModelMaterialSafety} isolates
+and normalises imported material instances, while
+\texttt{CozyLedMaterials}, \texttt{MaterialEnhancements} and
+\texttt{PlantMaterialTint} apply further visual adjustments to selected
+parts of the model.
+
+The imported hierarchy is then inspected to identify the objects
+required by the application. Meshes whose names begin with
+\texttt{CLICK\_} are configured as invisible interaction targets, while
+the visible meshes receive the appropriate shadow and material settings.
+The same loading phase creates the animation and power-management
+systems associated with Dummy, the lamp chain, the fans, the cooling
+tubes and the illuminated computer components.
+
+\subsection{Interaction Layer}
+
+Interaction with the three-dimensional environment is managed by
+\texttt{RaycasterController}. The controller uses a dedicated Three.js
+layer containing only the intended click targets. This separates the
+visible geometry from the interaction geometry and prevents decorative
+or complex meshes from receiving unintended pointer events.
+
+Pointer coordinates are converted from screen coordinates to normalized
+device coordinates and used to construct a ray from the camera into the
+scene. When an intersection is detected, the metadata stored in the
+selected target determines the corresponding operation.
+
+The lamp and chain targets are forwarded to \texttt{PowerExperience},
+which controls the powered state of the scene. The other targets open a
+portfolio section and request the corresponding camera transition.
+For example, the CPU opens the About section, the GPU opens Projects,
+the RAM opens Academic information, the fans open Work Experience and
+the cables open Hobbies and Interests.
+
+The textual interface is managed by \texttt{SectionPanel}. This class
+controls the visibility and content of the HTML panel and provides
+specialised layouts for academic experiences, projects and work
+experience. Closing the panel triggers a callback that returns the
+camera to the default view.
+
+\subsection{Camera and Rendering Systems}
+
+The camera system uses a \texttt{THREE.PerspectiveCamera} combined with
+\texttt{OrbitControls}. Each interactive section has a predefined camera
+position and target. When a section is selected, GSAP interpolates both
+the camera position and the controls target, producing a smooth movement
+towards the selected component. The controls are temporarily disabled
+during the transition and enabled again when both interpolations are
+complete.
+
+The \texttt{Renderer} class creates the \texttt{WebGLRenderer} and
+configures sRGB output, ACES Filmic tone mapping, antialiasing and shadow
+maps. Rendering is extended through an \texttt{EffectComposer} pipeline
+containing selective bloom, ambient occlusion and custom shader passes.
+The selective bloom system renders the LED components separately and
+composites their contribution over the base scene, preventing unrelated
+objects from producing an excessive glow.
+
+If a WebGL context cannot be created, the renderer hides the canvas and
+shows a fallback message asking the user to use a compatible browser
+with hardware acceleration enabled.
+
+\subsection{Update and Resize Cycle}
+
+The real-time update cycle is generated by the \texttt{Time} utility
+through \texttt{requestAnimationFrame}. At each frame, it calculates the
+elapsed time and the time difference from the previous frame, then emits
+a \texttt{tick} event.
+
+The \texttt{Experience} class responds to this event by executing the
+following operations:
+
+\begin{enumerate}
+    \item update the camera controls;
+    \item update the world and its active animations;
+    \item update the raycasting controller;
+    \item render the current frame.
+\end{enumerate}
+
+The \texttt{Sizes} utility listens for browser resize events and stores
+the updated viewport dimensions. When a resize occurs, the camera aspect
+ratio and projection matrix are recalculated, while the renderer and its
+post-processing buffers are resized accordingly. The effective pixel
+ratio is limited to reduce the rendering cost on high-density displays.
+
+This modular organisation separates scene construction, rendering,
+animation, interaction and interface management. As a result, the
+behaviour of individual elements can be modified without concentrating
+the entire application logic in a single script.
+
+
+\end{document}
+
+
+

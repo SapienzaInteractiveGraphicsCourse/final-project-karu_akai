@@ -73,6 +73,83 @@ body {
   opacity: 1;
 }
 
+#guidance-overlay {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 6;
+  width: max-content;
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 13px 18px;
+  border: 1px solid rgba(145, 225, 255, 0.42);
+  border-radius: 16px;
+  color: rgba(255, 255, 255, 0.84);
+  background: linear-gradient(
+    135deg,
+    rgba(10, 18, 30, 0.94),
+    rgba(8, 10, 18, 0.9)
+  );
+  box-shadow:
+    0 0 26px rgba(80, 180, 255, 0.18),
+    inset 0 0 20px rgba(255, 255, 255, 0.025);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 8px);
+  transition:
+    opacity 0.22s ease,
+    visibility 0.22s ease,
+    transform 0.22s ease;
+}
+
+#guidance-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+@media (max-width: 560px) {
+  #guidance-overlay {
+    right: 16px;
+    bottom: 16px;
+    left: auto;
+    max-width: calc(100vw - 148px);
+    padding: 11px 14px;
+    font-size: 0.72rem;
+    transform: translateY(8px);
+  }
+
+  #guidance-overlay.visible {
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 400px) {
+  #guidance-overlay {
+    bottom: 64px;
+    max-width: calc(100vw - 32px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #guidance-overlay,
+  #guidance-overlay.visible {
+    transform: translate(-50%, 0);
+    transition-duration: 0.01ms;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 560px) {
+  #guidance-overlay,
+  #guidance-overlay.visible {
+    transform: none;
+  }
+}
+
 #section-panel {
   position: fixed;
   right: 32px;

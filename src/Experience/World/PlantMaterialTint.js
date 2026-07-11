@@ -26,7 +26,7 @@ function isTooDark(color) {
 
 /** Makes imported plant materials readable without adding or changing lights. */
 export default class PlantMaterialTint {
-  constructor({ debug = import.meta.env.DEV } = {}) {
+  constructor({ debug = false } = {}) {
     this.debug = debug;
   }
 

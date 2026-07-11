@@ -42,6 +42,7 @@ export default class RaycasterController {
       event.stopPropagation();
       if (!this.interactions.canOpenSection()) return;
 
+      this.experience.guidanceOverlay?.registerActivity();
       this.sectionPanel.close({ force: true });
       this.beginMainCameraTransition();
       this.camera.moveToView('case');
@@ -101,6 +102,8 @@ export default class RaycasterController {
     if (powerExperience?.isPowerTarget(clickedObject)) {
       if (!this.interactions.canTogglePower()) return;
 
+      this.experience.guidanceOverlay?.registerActivity();
+      this.experience.guidanceOverlay?.stopIdleTimer();
       const nextPoweredOn = !powerExperience.poweredOn;
       this.interactions.beginTransition('power', {
         nextState: nextPoweredOn
@@ -147,8 +150,10 @@ export default class RaycasterController {
     this.interactions.beginTransition(CAMERA_SECTION_TRANSITION, {
       nextState: InteractionState.SECTION_OPEN,
     });
+    this.experience.guidanceOverlay?.hide();
+    this.experience.guidanceOverlay?.stopIdleTimer();
     this.sectionPanel.open(sectionId);
-    this.camera.setCalibrationTarget(clickedObject);
+    this.experience.debugUtils?.setCalibrationTarget(clickedObject);
     this.camera.moveToPreset(clickedObject.name);
 
     if (clickedObject.name === 'CLICK_DUMMY') {
@@ -157,6 +162,8 @@ export default class RaycasterController {
   }
 
   beginMainCameraTransition() {
+    this.experience.guidanceOverlay?.hide();
+    this.experience.guidanceOverlay?.stopIdleTimer();
     this.interactions.beginTransition(CAMERA_MAIN_TRANSITION, {
       nextState: this.getMainSceneState(),
     });

@@ -97,27 +97,11 @@ export default class Camera {
     this.activeTweens = [];
     this.transitionId = 0;
     this.currentPresetName = 'LAMP';
-    this.calibrationTarget = null;
     this.callbacks = {
       transitionComplete: [],
       mainSceneCameraSettled: [],
     };
 
-    window.addEventListener('keydown', (event) => {
-      const key = event.key.toLowerCase();
-
-      if (key === 'f') {
-        if (this.experience.interactions?.isInteractionLocked()) return;
-        this.frameCalibrationTarget();
-      } else if (key === 'p') {
-        this.logCurrentPreset();
-      } else if (key === 'd') {
-        this.logCurrentPreset('DEFAULT');
-      } else if (key === '0') {
-        if (this.experience.interactions?.isInteractionLocked()) return;
-        this.moveToDefault();
-      }
-    });
   }
 
   resize() {
@@ -218,110 +202,6 @@ export default class Camera {
     this.controls.update();
   }
 
-  setCalibrationTarget(object) {
-    this.calibrationTarget = object;
-    console.log(`Calibration target set: ${object.name}`);
-  }
-
-  frameCalibrationTarget() {
-    if (!this.calibrationTarget) {
-      console.warn(
-        'Calibration target missing: click a CLICK_ target before pressing F.'
-      );
-      return;
-    }
-
-    const box = new THREE.Box3().setFromObject(this.calibrationTarget);
-
-    if (box.isEmpty()) {
-      console.warn(
-        `Cannot frame calibration target: ${this.calibrationTarget.name} has an empty bounding box.`
-      );
-      return;
-    }
-
-    const center = new THREE.Vector3();
-    const size = new THREE.Vector3();
-    box.getCenter(center);
-    box.getSize(size);
-
-    const maxSize = Math.max(size.x, size.y, size.z);
-    const distance = Math.max(maxSize * 3, 1.2);
-    const direction = new THREE.Vector3();
-    this.instance.getWorldDirection(direction);
-    direction.multiplyScalar(-1).normalize();
-
-    const newPosition = center
-      .clone()
-      .add(direction.multiplyScalar(distance));
-
-    this.transitionId += 1;
-    const transitionId = this.transitionId;
-
-    this.activeTweens.forEach((tween) => tween.kill());
-    this.activeTweens = [];
-    this.controls.enabled = false;
-
-    let completedTweens = 0;
-
-    const handleUpdate = () => {
-      this.controls.update();
-    };
-
-    const handleComplete = () => {
-      completedTweens += 1;
-
-      if (completedTweens < 2 || transitionId !== this.transitionId) {
-        return;
-      }
-
-      this.controls.enabled = true;
-      this.controls.update();
-      this.activeTweens = [];
-    };
-
-    const positionTween = gsap.to(this.instance.position, {
-      x: newPosition.x,
-      y: newPosition.y,
-      z: newPosition.z,
-      duration: 0.8,
-      ease: 'power2.inOut',
-      overwrite: true,
-      onUpdate: handleUpdate,
-      onComplete: handleComplete,
-    });
-
-    const targetTween = gsap.to(this.controls.target, {
-      x: center.x,
-      y: center.y,
-      z: center.z,
-      duration: 0.8,
-      ease: 'power2.inOut',
-      overwrite: true,
-      onUpdate: handleUpdate,
-      onComplete: handleComplete,
-    });
-
-    this.activeTweens = [positionTween, targetTween];
-  }
-
-  logCurrentPreset(presetName) {
-    const resolvedPresetName =
-      presetName ??
-      this.currentPresetName ??
-      this.calibrationTarget?.name ??
-      'COPY_ME';
-    const format = (value) =>
-      Math.abs(value) < 0.0005 ? '0.000' : value.toFixed(3);
-    const position = this.instance.position;
-    const target = this.controls.target;
-
-    console.log(`${resolvedPresetName}: {
-  position: { x: ${format(position.x)}, y: ${format(position.y)}, z: ${format(position.z)} },
-  target: { x: ${format(target.x)}, y: ${format(target.y)}, z: ${format(target.z)} },
-  duration: 1.2,
-},`);
-  }
 }
 
 export { CAMERA_PRESETS, CAMERA_VIEWS };
