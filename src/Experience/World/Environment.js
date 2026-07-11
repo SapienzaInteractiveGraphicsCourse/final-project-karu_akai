@@ -74,6 +74,37 @@ export default class Environment {
     this.warmLight.position.set(12, -2.5, 4);
     this.warmLight.castShadow = false;
     this.scene.add(this.warmLight);
+
+    this.practicalLights = (this.config.practicalLights ?? []).map((config) => {
+      const light = new THREE.PointLight(
+        config.color,
+        config.intensityOff,
+        config.distance,
+        config.decay
+      );
+      light.name = config.name;
+      light.position.fromArray(config.position);
+      light.castShadow = false;
+      this.scene.add(light);
+      return { light, config };
+    });
+
+    const fanAccent = this.config.fanAccent;
+    this.fanAccentLight = fanAccent
+      ? new THREE.PointLight(
+          fanAccent.color,
+          fanAccent.intensityOff,
+          fanAccent.distance,
+          fanAccent.decay
+        )
+      : null;
+
+    if (this.fanAccentLight) {
+      this.fanAccentLight.name = 'CaseFanLedAccentLight';
+      this.fanAccentLight.position.fromArray(fanAccent.position);
+      this.fanAccentLight.castShadow = false;
+      this.scene.add(this.fanAccentLight);
+    }
   }
 
   setPowerAmount(amount) {
@@ -83,6 +114,23 @@ export default class Environment {
     this.keyLight.intensity = THREE.MathUtils.lerp(0.012, 0.09, power);
     this.coolLight.intensity = THREE.MathUtils.lerp(0.004, 0.018, power);
     this.warmLight.intensity = THREE.MathUtils.lerp(0.008, 0.075, power);
+
+    this.practicalLights?.forEach(({ light, config }) => {
+      light.intensity = THREE.MathUtils.lerp(
+        config.intensityOff,
+        config.intensityOn,
+        power
+      );
+    });
+
+    if (this.fanAccentLight && this.config.fanAccent) {
+      this.fanAccentLight.intensity = THREE.MathUtils.lerp(
+        this.config.fanAccent.intensityOff,
+        this.config.fanAccent.intensityOn,
+        power
+      );
+    }
+
     this.scene.environmentIntensity = THREE.MathUtils.lerp(
       this.config.environmentIntensityOff,
       this.config.environmentIntensityOn,
