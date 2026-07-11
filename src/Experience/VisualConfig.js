@@ -72,6 +72,24 @@ export const DESKTOP_VISUAL_CONFIG = Object.freeze({
       warmth: 0.04,
       contrast: 1.055,
     },
+    // Screen-space warmth aligned with the practical lamps painted into the
+    // background image. Dark-pixel masking keeps it off the foreground models.
+    backgroundPracticalGlow: {
+      amountOff: 0.12,
+      amountOn: 0.52,
+      left: {
+        position: [0.19, 0.47],
+        color: 0xff9148,
+        radius: 0.15,
+        intensity: 0.24,
+      },
+      center: {
+        position: [0.47, 0.72],
+        color: 0xffb15f,
+        radius: 0.11,
+        intensity: 0.17,
+      },
+    },
   },
   // Keep image-based lighting subordinate to the authored lamp and case LEDs.
   environment: {
