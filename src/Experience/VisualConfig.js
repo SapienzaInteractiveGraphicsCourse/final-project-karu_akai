@@ -79,6 +79,36 @@ export const DESKTOP_VISUAL_CONFIG = Object.freeze({
     environmentIntensityOn: 0.12,
     backgroundIntensityOff: 0.7,
     backgroundIntensityOn: 1.0,
+    // Motivated by the warm practical lamps visible in the background image.
+    practicalLights: [
+      {
+        name: 'LibraryLeftPracticalLight',
+        color: 0xffa45c,
+        intensityOff: 0.08,
+        intensityOn: 2.4,
+        distance: 18,
+        decay: 2,
+        position: [-27, -3.5, 3],
+      },
+      {
+        name: 'LibraryCenterPracticalLight',
+        color: 0xffbd79,
+        intensityOff: 0.04,
+        intensityOn: 1.3,
+        distance: 15,
+        decay: 2,
+        position: [-10.5, -1.2, 2],
+      },
+    ],
+    // A restrained local reflection of the champagne LED rings on the fans.
+    fanAccent: {
+      color: 0xd9b77a,
+      intensityOff: 0,
+      intensityOn: 1.8,
+      distance: 6,
+      decay: 2,
+      position: [-3.2, -7.2, 11.3],
+    },
   },
   lamp: {
     color: 0xffc783,
@@ -86,7 +116,7 @@ export const DESKTOP_VISUAL_CONFIG = Object.freeze({
     shadeEmissiveIntensity: 0.36,
     shadeOverlayOpacity: 0.09,
     coneColor: 0xffc477,
-    coneOpacity: 0.068,
+    coneOpacity: 0.04,
     pointIntensity: 7,
     pointDistance: 8,
     fillIntensity: 2.4,
