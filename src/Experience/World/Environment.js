@@ -46,7 +46,11 @@ export default class Environment {
     this.ambientLight = new THREE.AmbientLight(0xffead7, 0.008);
     this.scene.add(this.ambientLight);
 
-    this.hemisphereLight = new THREE.HemisphereLight(0xdabda5, 0x090d13, 0.012);
+    this.hemisphereLight = new THREE.HemisphereLight(
+      0xdabda5,
+      0x090d13,
+      0.012
+    );
     this.scene.add(this.hemisphereLight);
 
     this.keyTarget = new THREE.Object3D();
@@ -56,34 +60,36 @@ export default class Environment {
     this.keyLight = new THREE.DirectionalLight(0xffdfbd, 0.012);
     this.keyLight.position.set(-15, 18, 26);
     this.keyLight.target = this.keyTarget;
-    // The practical lamp is the only shadow-casting light. Keeping this broad
-    // studio key shadowless avoids a second full-scene shadow render.
+    // This broad key only preserves readability. Local practical lights provide
+    // the visible modelling and shadows.
     this.keyLight.castShadow = false;
     this.scene.add(this.keyLight);
 
-    this.coolLight = new THREE.PointLight(0x6e9caf, 0.01, 34, 2);
+    this.coolLight = new THREE.PointLight(0x6e9caf, 0.004, 34, 2);
     this.coolLight.position.set(-20, 1.5, 8);
+    this.coolLight.castShadow = false;
     this.scene.add(this.coolLight);
 
     this.warmLight = new THREE.PointLight(0xffb574, 0.008, 30, 2);
     this.warmLight.position.set(12, -2.5, 4);
+    this.warmLight.castShadow = false;
     this.scene.add(this.warmLight);
   }
 
   setPowerAmount(amount) {
     const power = THREE.MathUtils.clamp(amount, 0, 1);
-    this.ambientLight.intensity = THREE.MathUtils.lerp(0.008, 0.032, power);
-    this.hemisphereLight.intensity = THREE.MathUtils.lerp(0.012, 0.075, power);
-    this.keyLight.intensity = THREE.MathUtils.lerp(0.012, 0.26, power);
-    this.coolLight.intensity = THREE.MathUtils.lerp(0.01, 0.2, power);
-    this.warmLight.intensity = THREE.MathUtils.lerp(0.008, 0.11, power);
+    this.ambientLight.intensity = THREE.MathUtils.lerp(0.008, 0.024, power);
+    this.hemisphereLight.intensity = THREE.MathUtils.lerp(0.012, 0.05, power);
+    this.keyLight.intensity = THREE.MathUtils.lerp(0.012, 0.09, power);
+    this.coolLight.intensity = THREE.MathUtils.lerp(0.004, 0.018, power);
+    this.warmLight.intensity = THREE.MathUtils.lerp(0.008, 0.075, power);
     this.scene.environmentIntensity = THREE.MathUtils.lerp(
-      Math.max(this.config.environmentIntensityOff, 0.18),
+      this.config.environmentIntensityOff,
       this.config.environmentIntensityOn,
       power
     );
     this.scene.backgroundIntensity = THREE.MathUtils.lerp(
-      Math.max(this.config.backgroundIntensityOff, 0.38),
+      this.config.backgroundIntensityOff,
       this.config.backgroundIntensityOn,
       power
     );
