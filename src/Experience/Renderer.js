@@ -10,6 +10,22 @@ import { DESKTOP_VISUAL_CONFIG } from './VisualConfig.js';
 
 const { renderer: RENDERER_CONFIG, postProcessing: POST_CONFIG } =
   DESKTOP_VISUAL_CONFIG;
+const PRACTICAL_GLOW_CONFIG = POST_CONFIG.backgroundPracticalGlow ?? {
+  amountOff: 0,
+  amountOn: 0,
+  left: {
+    position: [0, 0],
+    color: 0x000000,
+    radius: 0.01,
+    intensity: 0,
+  },
+  center: {
+    position: [0, 0],
+    color: 0x000000,
+    radius: 0.01,
+    intensity: 0,
+  },
+};
 
 const bloomCompositeShader = {
   uniforms: {
@@ -41,6 +57,24 @@ const cinematicFinishShader = {
     darkness: { value: POST_CONFIG.vignette.darkness },
     warmth: { value: POST_CONFIG.vignette.warmth },
     contrast: { value: POST_CONFIG.vignette.contrast },
+    practicalGlowAmount: { value: PRACTICAL_GLOW_CONFIG.amountOff },
+    aspectRatio: { value: 1 },
+    glowLeftPosition: {
+      value: new THREE.Vector2(...PRACTICAL_GLOW_CONFIG.left.position),
+    },
+    glowLeftColor: {
+      value: new THREE.Color(PRACTICAL_GLOW_CONFIG.left.color),
+    },
+    glowLeftRadius: { value: PRACTICAL_GLOW_CONFIG.left.radius },
+    glowLeftIntensity: { value: PRACTICAL_GLOW_CONFIG.left.intensity },
+    glowCenterPosition: {
+      value: new THREE.Vector2(...PRACTICAL_GLOW_CONFIG.center.position),
+    },
+    glowCenterColor: {
+      value: new THREE.Color(PRACTICAL_GLOW_CONFIG.center.color),
+    },
+    glowCenterRadius: { value: PRACTICAL_GLOW_CONFIG.center.radius },
+    glowCenterIntensity: { value: PRACTICAL_GLOW_CONFIG.center.intensity },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -56,7 +90,23 @@ const cinematicFinishShader = {
     uniform float darkness;
     uniform float warmth;
     uniform float contrast;
+    uniform float practicalGlowAmount;
+    uniform float aspectRatio;
+    uniform vec2 glowLeftPosition;
+    uniform vec3 glowLeftColor;
+    uniform float glowLeftRadius;
+    uniform float glowLeftIntensity;
+    uniform vec2 glowCenterPosition;
+    uniform vec3 glowCenterColor;
+    uniform float glowCenterRadius;
+    uniform float glowCenterIntensity;
     varying vec2 vUv;
+
+    float radialGlow(vec2 uv, vec2 center, float radius) {
+      vec2 delta = uv - center;
+      delta.x *= aspectRatio;
+      return 1.0 - smoothstep(0.0, radius, length(delta));
+    }
 
     void main() {
       vec4 source = texture2D(tDiffuse, vUv);
@@ -70,6 +120,17 @@ const cinematicFinishShader = {
       vec3 graded = source.rgb * mix(vec3(1.0), coolShadows, shadowWeight * 0.24);
       graded *= mix(vec3(1.0), warmHighlights, highlightWeight);
       graded = (graded - 0.18) * contrast + 0.18;
+
+      float leftGlow = radialGlow(vUv, glowLeftPosition, glowLeftRadius);
+      float centerGlow = radialGlow(vUv, glowCenterPosition, glowCenterRadius);
+      float darkBackgroundMask = 1.0 - smoothstep(0.18, 0.72, luminance);
+      float upperSceneMask = smoothstep(0.24, 0.4, vUv.y);
+      vec3 practicalGlow =
+        glowLeftColor * leftGlow * glowLeftIntensity +
+        glowCenterColor * centerGlow * glowCenterIntensity;
+      graded +=
+        practicalGlow * practicalGlowAmount * darkBackgroundMask * upperSceneMask;
+
       graded *= 1.0 - vignette * darkness;
       gl_FragColor = vec4(graded, source.a);
     }
@@ -178,6 +239,16 @@ export default class Renderer {
       RENDERER_CONFIG.exposureOn,
       power
     );
+
+    const glowUniform =
+      this.cinematicFinishPass?.material?.uniforms?.practicalGlowAmount;
+    if (glowUniform) {
+      glowUniform.value = THREE.MathUtils.lerp(
+        PRACTICAL_GLOW_CONFIG.amountOff,
+        PRACTICAL_GLOW_CONFIG.amountOn,
+        power
+      );
+    }
   }
 
   excludeDecorativeMeshesFromSSAO(pass) {
@@ -232,6 +303,15 @@ export default class Renderer {
     this.bloomComposer?.setPixelRatio(pixelRatio);
     this.finalComposer?.setSize(this.sizes.width, this.sizes.height);
     this.finalComposer?.setPixelRatio(pixelRatio);
+
+    const aspectUniform =
+      this.cinematicFinishPass?.material?.uniforms?.aspectRatio;
+    if (aspectUniform) {
+      aspectUniform.value = Math.max(
+        this.sizes.width / Math.max(this.sizes.height, 1),
+        0.0001
+      );
+    }
   }
 
   update() {
