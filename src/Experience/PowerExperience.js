@@ -51,7 +51,7 @@ export default class PowerExperience {
     this.lampRoot = this.findLampRoot();
     this.lampMaterials = this.collectLampMaterials();
     this.lampLight = this.createLampLight();
-    this.caseLedSpillLight = this.createCaseLedSpillLight();
+    this.createCaseLedSpillLights();
 
     if (this.chainTarget) this.chainTarget.userData.isPowerTarget = true;
     this.applyPowerAmount(0);
@@ -71,6 +71,27 @@ export default class PowerExperience {
     let match = null;
     this.model?.traverse((object) => {
       if (!match && LAMP_NAME_PATTERN.test(object.name ?? '')) match = object;
+    });
+    return match;
+  }
+
+  findTableRoot() {
+    const preferredNames = ['Table', 'table', 'Tavolo', 'tavolo'];
+    for (const name of preferredNames) {
+      const object = this.model?.getObjectByName(name);
+      if (object) return object;
+    }
+
+    let match = null;
+    this.model?.traverse((object) => {
+      if (
+        !match &&
+        /(^table$|round[_\s-]*wooden[_\s-]*table|tavolo)/i.test(
+          object.name ?? ''
+        )
+      ) {
+        match = object;
+      }
     });
     return match;
   }
@@ -104,34 +125,166 @@ export default class PowerExperience {
     return light;
   }
 
-  createCaseLedSpillLight() {
+  isDescendantOf(object, ancestor) {
+    if (!object || !ancestor) return false;
+
+    let current = object;
+    while (current) {
+      if (current === ancestor) return true;
+      current = current.parent;
+    }
+    return false;
+  }
+
+  hasNamedAncestor(object, pattern) {
+    let current = object;
+    while (current) {
+      if (pattern.test(current.name ?? '')) return true;
+      current = current.parent;
+    }
+    return false;
+  }
+
+  computeCaseBounds({ dummyRoot, tableRoot }) {
+    const bounds = new THREE.Box3();
+    let hasBounds = false;
+
+    this.model?.updateWorldMatrix(true, true);
+    this.model?.traverse((object) => {
+      if (
+        !object.isMesh ||
+        object.name?.startsWith('CLICK_') ||
+        this.isDescendantOf(object, dummyRoot) ||
+        this.isDescendantOf(object, tableRoot) ||
+        this.hasNamedAncestor(object, LAMP_NAME_PATTERN) ||
+        /(plant|leaf|trunk|sketchfab|komish)/i.test(object.name ?? '')
+      ) {
+        return;
+      }
+
+      const geometry = object.geometry;
+      if (!geometry) return;
+      if (!geometry.boundingBox) geometry.computeBoundingBox();
+      if (!geometry.boundingBox) return;
+
+      const objectBounds = geometry.boundingBox
+        .clone()
+        .applyMatrix4(object.matrixWorld);
+      if (objectBounds.isEmpty()) return;
+
+      if (!hasBounds) {
+        bounds.copy(objectBounds);
+        hasBounds = true;
+      } else {
+        bounds.union(objectBounds);
+      }
+    });
+
+    return hasBounds ? bounds : null;
+  }
+
+  createCaseLedSpillLights() {
     const config = this.caseLedSpill;
-    const light = new THREE.SpotLight(
+    const dummyRoot = this.model?.getObjectByName('Dummy_root') ?? null;
+    const tableRoot = this.findTableRoot();
+
+    this.model?.updateWorldMatrix(true, true);
+
+    const caseBounds = this.computeCaseBounds({ dummyRoot, tableRoot });
+    const dummyBounds = dummyRoot
+      ? new THREE.Box3().setFromObject(dummyRoot)
+      : null;
+    const tableBounds = tableRoot
+      ? new THREE.Box3().setFromObject(tableRoot)
+      : null;
+
+    const fillPosition = new THREE.Vector3().fromArray(
+      config.fallback.fillPosition
+    );
+    const spotPosition = new THREE.Vector3().fromArray(
+      config.fallback.spotPosition
+    );
+    const targetPosition = new THREE.Vector3().fromArray(
+      config.fallback.target
+    );
+    let spotDistance = config.fallback.distance;
+
+    if (caseBounds && !caseBounds.isEmpty()) {
+      const caseCenter = caseBounds.getCenter(new THREE.Vector3());
+      const caseSize = caseBounds.getSize(new THREE.Vector3());
+
+      fillPosition.set(
+        caseCenter.x,
+        caseCenter.y + caseSize.y * config.fill.verticalFactor,
+        caseBounds.max.z + config.fill.frontOffset
+      );
+
+      spotPosition.set(
+        caseBounds.min.x - config.spot.sideOffset,
+        caseCenter.y + caseSize.y * config.spot.heightFactor,
+        caseBounds.max.z + config.spot.frontOffset
+      );
+    }
+
+    if (dummyBounds && !dummyBounds.isEmpty()) {
+      const dummyCenter = dummyBounds.getCenter(new THREE.Vector3());
+      const dummySize = dummyBounds.getSize(new THREE.Vector3());
+      targetPosition.copy(dummyCenter);
+
+      if (tableBounds && !tableBounds.isEmpty()) {
+        targetPosition.y =
+          tableBounds.max.y + Math.max(dummySize.y * 0.48, 0.6);
+      }
+
+      spotDistance =
+        spotPosition.distanceTo(targetPosition) +
+        config.spot.distancePadding;
+    }
+
+    this.caseLedFillLight = new THREE.PointLight(
       config.color,
       0,
-      config.distance,
-      config.angle,
-      config.penumbra,
-      config.decay
+      config.fill.distance,
+      config.fill.decay
     );
-    light.name = 'CaseLedSpillLight';
-    light.position.fromArray(config.position);
-    light.castShadow = true;
-    light.shadow.mapSize.set(config.shadow.mapSize, config.shadow.mapSize);
-    light.shadow.bias = config.shadow.bias;
-    light.shadow.normalBias = config.shadow.normalBias;
-    light.shadow.radius = config.shadow.radius;
-    light.shadow.camera.near = config.shadow.near;
-    light.shadow.camera.far = config.shadow.far;
+    this.caseLedFillLight.name = 'CaseLedInteriorFillLight';
+    this.caseLedFillLight.position.copy(fillPosition);
+    this.caseLedFillLight.castShadow = false;
 
-    const target = new THREE.Object3D();
-    target.name = 'CaseLedSpillTarget';
-    target.position.fromArray(config.target);
-    light.target = target;
+    this.caseLedSpillTarget = new THREE.Object3D();
+    this.caseLedSpillTarget.name = 'CaseLedSpillTarget';
+    this.caseLedSpillTarget.position.copy(targetPosition);
 
-    this.scene.add(target);
-    this.scene.add(light);
-    return light;
+    this.caseLedSpillLight = new THREE.SpotLight(
+      config.color,
+      0,
+      spotDistance,
+      config.spot.angle,
+      config.spot.penumbra,
+      config.spot.decay
+    );
+    this.caseLedSpillLight.name = 'CaseLedSpillLight';
+    this.caseLedSpillLight.position.copy(spotPosition);
+    this.caseLedSpillLight.target = this.caseLedSpillTarget;
+    this.caseLedSpillLight.castShadow = true;
+
+    const shadow = config.spot.shadow;
+    this.caseLedSpillLight.shadow.mapSize.set(
+      shadow.mapSize,
+      shadow.mapSize
+    );
+    this.caseLedSpillLight.shadow.bias = shadow.bias;
+    this.caseLedSpillLight.shadow.normalBias = shadow.normalBias;
+    this.caseLedSpillLight.shadow.radius = shadow.radius;
+    this.caseLedSpillLight.shadow.camera.near = shadow.near;
+    this.caseLedSpillLight.shadow.camera.far = spotDistance;
+    this.caseLedSpillLight.shadow.focus = 1;
+
+    this.scene.add(
+      this.caseLedFillLight,
+      this.caseLedSpillTarget,
+      this.caseLedSpillLight
+    );
   }
 
   isPowerTarget(object) {
@@ -218,7 +371,7 @@ export default class PowerExperience {
     );
 
     this.ledController?.setIntensityScale(caseIntensity);
-    this.updateCaseLedSpillLight(power);
+    this.updateCaseLedSpillLights(power);
     this.lampLight.intensity = POWERED_LAMP_INTENSITY * power;
     this.lampMaterials.forEach((material) => {
       material.emissive.set(0xffc477);
@@ -257,9 +410,16 @@ export default class PowerExperience {
     this.updateCpuMaterials(power);
   }
 
-  updateCaseLedSpillLight(powerAmount) {
-    this.caseLedSpillLight.intensity =
-      this.caseLedSpill.maximumIntensity * powerAmount;
+  updateCaseLedSpillLights(powerAmount) {
+    if (this.caseLedFillLight) {
+      this.caseLedFillLight.intensity =
+        this.caseLedSpill.fill.maximumIntensity * powerAmount;
+    }
+
+    if (this.caseLedSpillLight) {
+      this.caseLedSpillLight.intensity =
+        this.caseLedSpill.spot.maximumIntensity * powerAmount;
+    }
   }
 
   redrawCpuSbcLabel() {
