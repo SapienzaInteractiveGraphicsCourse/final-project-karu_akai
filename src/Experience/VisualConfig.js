@@ -16,7 +16,25 @@ export const DESKTOP_VISUAL_CONFIG = Object.freeze({
   },
   caseLighting: {
     intensityOff: 0,
-    intensityOn: 0.32,
+    intensityOn: 0.4,
+    ledSpill: {
+      color: 0xd9b77a,
+      maximumIntensity: 18,
+      position: [-15, -6.5, 10.9],
+      target: [-20.9, -12.2, 10.3],
+      angle: 0.75,
+      distance: 16,
+      penumbra: 0.55,
+      decay: 2,
+      shadow: {
+        mapSize: 1024,
+        bias: -0.00015,
+        normalBias: 0.025,
+        radius: 2,
+        near: 0.5,
+        far: 16,
+      },
+    },
   },
   postProcessing: {
     ambientOcclusion: {

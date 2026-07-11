@@ -45,11 +45,13 @@ export default class PowerExperience {
       transitionComplete: [],
     };
     this.caseLighting = DESKTOP_VISUAL_CONFIG.caseLighting;
+    this.caseLedSpill = this.caseLighting.ledSpill;
 
     this.chainTarget = model?.getObjectByName('CLICK_CHAIN') ?? null;
     this.lampRoot = this.findLampRoot();
     this.lampMaterials = this.collectLampMaterials();
     this.lampLight = this.createLampLight();
+    this.caseLedSpillLight = this.createCaseLedSpillLight();
 
     if (this.chainTarget) this.chainTarget.userData.isPowerTarget = true;
     this.applyPowerAmount(0);
@@ -98,6 +100,36 @@ export default class PowerExperience {
     const bulb = this.model?.getObjectByName('LAMPADINA_4') ?? this.lampRoot;
     this.model?.updateWorldMatrix(true, true);
     bulb?.getWorldPosition(light.position);
+    this.scene.add(light);
+    return light;
+  }
+
+  createCaseLedSpillLight() {
+    const config = this.caseLedSpill;
+    const light = new THREE.SpotLight(
+      config.color,
+      0,
+      config.distance,
+      config.angle,
+      config.penumbra,
+      config.decay
+    );
+    light.name = 'CaseLedSpillLight';
+    light.position.fromArray(config.position);
+    light.castShadow = true;
+    light.shadow.mapSize.set(config.shadow.mapSize, config.shadow.mapSize);
+    light.shadow.bias = config.shadow.bias;
+    light.shadow.normalBias = config.shadow.normalBias;
+    light.shadow.radius = config.shadow.radius;
+    light.shadow.camera.near = config.shadow.near;
+    light.shadow.camera.far = config.shadow.far;
+
+    const target = new THREE.Object3D();
+    target.name = 'CaseLedSpillTarget';
+    target.position.fromArray(config.target);
+    light.target = target;
+
+    this.scene.add(target);
     this.scene.add(light);
     return light;
   }
@@ -186,6 +218,7 @@ export default class PowerExperience {
     );
 
     this.ledController?.setIntensityScale(caseIntensity);
+    this.updateCaseLedSpillLight(power);
     this.lampLight.intensity = POWERED_LAMP_INTENSITY * power;
     this.lampMaterials.forEach((material) => {
       material.emissive.set(0xffc477);
@@ -222,6 +255,11 @@ export default class PowerExperience {
     }
 
     this.updateCpuMaterials(power);
+  }
+
+  updateCaseLedSpillLight(powerAmount) {
+    this.caseLedSpillLight.intensity =
+      this.caseLedSpill.maximumIntensity * powerAmount;
   }
 
   redrawCpuSbcLabel() {

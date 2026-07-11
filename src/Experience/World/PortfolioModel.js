@@ -6,7 +6,10 @@ import { FanAnimator } from '../../animations/FanAnimator.js';
 import { TubeFlowAnimator } from '../../animations/TubeFlowAnimator.js';
 import ApplyingTexture from '../../utils/ApplyingTexture.js';
 import CozyLedMaterials from '../../utils/CozyLedMaterials.js';
-import { secureModelMaterials } from '../../utils/ModelMaterialSafety.js';
+import {
+  isExplicitGlassObject,
+  secureModelMaterials,
+} from '../../utils/ModelMaterialSafety.js';
 import { InteractionState } from '../InteractionState.js';
 import PowerExperience from '../PowerExperience.js';
 import { DESKTOP_VISUAL_CONFIG } from '../VisualConfig.js';
@@ -242,6 +245,8 @@ export default class PortfolioModel {
           enabled: false,
         });
 
+        this.configureCaseLedShadows(dummyRoot);
+
         this.powerExperience = new PowerExperience({
           scene: this.scene,
           model: this.loadedModel,
@@ -308,6 +313,61 @@ export default class PortfolioModel {
     if (object.material) {
       object.material.needsUpdate = true;
     }
+  }
+
+  configureCaseLedShadows(dummyRoot) {
+    const dummyMeshes = new Set();
+    dummyRoot?.traverse((object) => {
+      if (object.isMesh) dummyMeshes.add(object);
+    });
+
+    this.loadedModel?.traverse((object) => {
+      if (
+        !object.isMesh ||
+        dummyMeshes.has(object) ||
+        !this.shouldDisableShadowCasting(object)
+      ) {
+        return;
+      }
+      object.castShadow = false;
+    });
+
+    dummyMeshes.forEach((mesh) => {
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+    });
+
+    const tableRoot = this.loadedModel?.getObjectByName('Table');
+    tableRoot?.traverse((object) => {
+      if (object.isMesh) object.receiveShadow = true;
+    });
+  }
+
+  shouldDisableShadowCasting(object) {
+    const role = object.userData?.modelMaterialRole;
+    const isNonShadowVisual =
+      object.userData?.isClickTarget ||
+      object.userData?.isParticle ||
+      Boolean(object.userData?.cozyLedRole) ||
+      role === 'tube' ||
+      role === 'cpu-core-label' ||
+      object.name === 'CPU_CORE_WARM_LED' ||
+      /^(?:Particle(?:[._-]|$)|(?:Large|Small)TubeFlow_Ball_)/i.test(
+        object.name ?? ''
+      );
+
+    if (isNonShadowVisual || isExplicitGlassObject(object)) return true;
+
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : [object.material];
+    return materials.some(
+      (material) =>
+        material?.transparent === true ||
+        (material?.opacity ?? 1) < 1 ||
+        (material?.transmission ?? 0) > 0 ||
+        material?.depthWrite === false
+    );
   }
 
   isPlantLikeMesh(object) {
