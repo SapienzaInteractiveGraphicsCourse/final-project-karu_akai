@@ -246,6 +246,7 @@ export default class PortfolioModel {
         });
 
         this.configureCaseLedShadows(dummyRoot);
+        this.createDummyContactShadow(dummyRoot);
 
         this.powerExperience = new PowerExperience({
           scene: this.scene,
@@ -633,6 +634,151 @@ export default class PortfolioModel {
       });
     });
   }
+
+  createDummyContactShadow(dummyRoot) {
+  if (!dummyRoot || !this.loadedModel || !this.scene) {
+    console.warn('[DummyContactShadow] Dummy or scene missing.');
+    return null;
+  }
+
+  const previousShadow = this.scene.getObjectByName(
+    'DummyContactShadow'
+  );
+
+  if (previousShadow) {
+    previousShadow.removeFromParent();
+    previousShadow.geometry?.dispose();
+    previousShadow.material?.dispose();
+  }
+
+  const tableRoot =
+    this.loadedModel.getObjectByName('Table') ??
+    this.loadedModel.getObjectByName('table');
+
+  if (!tableRoot) {
+    console.warn('[DummyContactShadow] Table not found.');
+    return null;
+  }
+
+  this.loadedModel.updateWorldMatrix(true, true);
+  dummyRoot.updateWorldMatrix(true, true);
+  tableRoot.updateWorldMatrix(true, true);
+
+  const dummyBounds = new THREE.Box3().setFromObject(dummyRoot);
+  const tableBounds = new THREE.Box3().setFromObject(tableRoot);
+
+  if (dummyBounds.isEmpty() || tableBounds.isEmpty()) {
+    console.warn('[DummyContactShadow] Empty bounds.');
+    return null;
+  }
+
+  const dummyCenter = dummyBounds.getCenter(new THREE.Vector3());
+  const dummySize = dummyBounds.getSize(new THREE.Vector3());
+
+  const width = THREE.MathUtils.clamp(
+    dummySize.x * 0.80,
+    0.75,
+    1.5
+  );
+
+  const depth = THREE.MathUtils.clamp(
+    dummySize.z * 1.0,
+    0.4,
+    0.85
+  );
+
+  const material = new THREE.ShaderMaterial({
+    name: 'DummyContactShadowMaterial',
+
+    transparent: true,
+    depthTest: true,
+    depthWrite: false,
+    toneMapped: false,
+
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+
+    uniforms: {
+      uOpacity: { value: 0.50 },
+    },
+
+    vertexShader: `
+      varying vec2 vUv;
+
+      void main() {
+        vUv = uv;
+
+        gl_Position =
+          projectionMatrix *
+          modelViewMatrix *
+          vec4(position, 1.0);
+      }
+    `,
+
+    fragmentShader: `
+      uniform float uOpacity;
+      varying vec2 vUv;
+
+      void main() {
+        vec2 point = (vUv - 0.5) * 2.0;
+        float distanceFromCenter = length(point);
+
+        float alpha =
+          (1.0 - smoothstep(
+            0.10,
+            1.0,
+            distanceFromCenter
+          )) * uOpacity;
+
+        if (alpha < 0.002) {
+          discard;
+        }
+
+        gl_FragColor = vec4(
+          0.0,
+          0.0,
+          0.0,
+          alpha
+        );
+      }
+    `,
+  });
+
+  const geometry = new THREE.PlaneGeometry(width, depth);
+
+  const shadow = new THREE.Mesh(geometry, material);
+
+  shadow.name = 'DummyContactShadow';
+  shadow.rotation.x = -Math.PI / 2;
+
+  shadow.position.set(
+    dummyCenter.x,
+    tableBounds.max.y + 0.008,
+    dummyCenter.z
+  );
+
+  shadow.castShadow = false;
+  shadow.receiveShadow = false;
+  shadow.renderOrder = 2;
+  shadow.frustumCulled = false;
+
+  shadow.userData.excludeFromSSAO = true;
+  shadow.userData.excludeFromBloom = true;
+
+  this.scene.add(shadow);
+
+  const gap = dummyBounds.min.y - tableBounds.max.y;
+
+  console.info('[DummyContactShadow]', {
+    gap,
+    width,
+    depth,
+    position: shadow.position.toArray(),
+  });
+
+  return shadow;
+}
 
   logModelDiagnostics() {
     if (!this.loadedModel) return;
