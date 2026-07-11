@@ -4,6 +4,8 @@ const LAMP_PATTERN = /(lamp|lampada|lampadina|paralume|bulb|shade)/i;
 const GLASS_PATTERN = /(glass|vetro|acrylic)/i;
 const CABLE_PATTERN = /(cable|tube|pipe|hose|cooling)/i;
 const TABLE_PATTERN = /(table|desk|tavolo|wood_table)/i;
+const MARBLE_CASE_PATTERN = /(?:^|[\s._-])(?:case(?:_exterior|_exerior)?|frame|marble(?:021)?)(?=$|[\s._-])/i;
+const NON_MARBLE_CASE_PATTERN = /(case_inside|case_upside|foot|fan|gpu|cpu|tube|pipe|cooling|memory|ram|screw|bolt|bracket)/i;
 
 function getSearchableName(object, material) {
   const names = [object.name, material?.name];
@@ -15,6 +17,10 @@ function getSearchableName(object, material) {
   }
 
   return names.filter(Boolean).join(' ');
+}
+
+function getDirectName(object, material) {
+  return [object.name, material?.name].filter(Boolean).join(' ');
 }
 
 /** Refines authored materials while preserving their maps and object identity. */
@@ -35,11 +41,20 @@ export default class MaterialEnhancements {
         if (!material?.isMaterial) return;
 
         const searchableName = getSearchableName(object, material);
+        const directName = getDirectName(object, material);
         const role = object.userData?.modelMaterialRole ?? '';
+        const isExplicitMarbleCase =
+          MARBLE_CASE_PATTERN.test(directName) &&
+          !NON_MARBLE_CASE_PATTERN.test(directName);
+        const isNonMetalCase =
+          role === 'case' && (material.metalness ?? 0) <= 0.15;
 
         if (TABLE_PATTERN.test(searchableName) || role === 'table') {
           this.enhanceTable(material);
           object.receiveShadow = true;
+        } else if (isExplicitMarbleCase || isNonMetalCase) {
+          this.enhanceMarbleCase(material);
+          object.userData.modelMaterialRole = 'case';
         } else if (GLASS_PATTERN.test(searchableName)) {
           this.enhanceGlass(material);
           object.castShadow = false;
@@ -69,6 +84,17 @@ export default class MaterialEnhancements {
     [material.map, material.roughnessMap, material.normalMap].forEach((texture) => {
       if (texture) texture.anisotropy = Math.max(texture.anisotropy ?? 1, 8);
     });
+  }
+
+  enhanceMarbleCase(material) {
+    // Keep the marble readable as ivory stone instead of a white studio reflector.
+    if ('roughness' in material) material.roughness = 0.72;
+    if ('metalness' in material) material.metalness = 0;
+    if ('envMapIntensity' in material) material.envMapIntensity = 0.16;
+    if (material.color) material.color.lerp(new THREE.Color(0xd6cbbf), 0.2);
+    if (material.normalScale) material.normalScale.setScalar(0.38);
+    if (material.emissive) material.emissive.set(0x000000);
+    if ('emissiveIntensity' in material) material.emissiveIntensity = 0;
   }
 
   enhanceGlass(material) {
@@ -118,18 +144,8 @@ export default class MaterialEnhancements {
   enhanceHardware(material, role) {
     const sourceMetalness = material.metalness ?? 0;
 
-    // The exterior marble shares the broad `case` role with some metallic
-    // internals. Preserve the distinction using the authored metalness value.
     if (role === 'case' && sourceMetalness <= 0.15) {
-      if ('roughness' in material) {
-        material.roughness = THREE.MathUtils.clamp(
-          material.roughness ?? 0.65,
-          0.62,
-          0.72
-        );
-      }
-      if ('metalness' in material) material.metalness = 0;
-      if ('envMapIntensity' in material) material.envMapIntensity = 0.32;
+      this.enhanceMarbleCase(material);
       return;
     }
 
