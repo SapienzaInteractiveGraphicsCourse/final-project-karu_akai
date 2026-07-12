@@ -39,3 +39,11 @@ dist-ssr
 # Texture
 texture/
 public/textures/
+
+# Report: version only source, PNG images and generated PDF
+/report/**
+!/report/
+!/report/**/
+!/report/**/*.png
+!/report/**/*.tex
+!/report/**/*.pdf
